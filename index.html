@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drum Pattern Producer App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        /* Apply Inter font and dark theme to the body */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            color: #e2e8f0; /* Light text */
+        }
+        /* Custom scrollbar styling for the pattern list for better aesthetics */
+        .pattern-list-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .pattern-list-container::-webkit-scrollbar-track {
+            background: #2d3748; /* Darker track */
+            border-radius: 10px;
+        }
+        .pattern-list-container::-webkit-scrollbar-thumb {
+            background: #4a5568; /* Lighter thumb */
+            border-radius: 10px;
+        }
+        .pattern-list-container::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* Even lighter on hover */
+        }
+        /* Custom range slider styling for better visual consistency */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6; /* Blue accent color */
+            cursor: pointer;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5); /* Ring effect */
+            transition: background .15s ease-in-out;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
+            transition: background .15s ease-in-out;
+        }
+        input[type="range"]:hover::-webkit-slider-thumb {
+            background: #2563eb; /* Darker blue on hover */
+        }
+        input[type="range"]:hover::-moz-range-thumb {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-5xl">
+        <h1 class="text-4xl font-bold text-center mb-8 text-blue-400">Drum Pattern Producer</h1>
+
+        <div class="mb-8 flex flex-wrap justify-center gap-4">
+            <button class="genre-btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Hip Hop">Hip Hop</button>
+            <button class="genre-btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="R&B">R&B</button>
+            <button class="genre-btn bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Trap">Trap</button>
+            <button class="genre-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Drill">Drill</button>
+            <button class="genre-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Soul">Soul</button>
+            <button class="genre-btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Salsa">Salsa</button>
+            <button class="genre-btn bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="UK Drill">UK Drill</button>
+            <button class="genre-btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Pop">Pop</button>
+            <button class="genre-btn bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Reggae">Reggae</button>
+            <button class="genre-btn bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Afrobeats">Afrobeats</button>
+            <button class="genre-btn bg-lime-600 hover:bg-lime-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="London Grime">London Grime</button>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-8">
+            <div class="md:w-1/3 bg-gray-700 rounded-lg p-4 shadow-inner">
+                <h2 class="text-2xl font-semibold mb-4 text-blue-300">Patterns (<span id="current-genre-display">Hip Hop</span>)</h2>
+                <div id="pattern-list" class="pattern-list-container h-80 overflow-y-auto pr-2">
+                    </div>
+            </div>
+
+            <div class="md:w-2/3 bg-gray-700 rounded-lg p-6 shadow-inner flex flex-col">
+                <h2 class="text-2xl font-semibold mb-4 text-blue-300">Selected Pattern: <span id="selected-pattern-name" class="text-white">None</span></h2>
+
+                <div id="pattern-grid-container" class="mb-6 p-2 bg-gray-900 rounded-md">
+                    </div>
+
+                <div class="flex flex-wrap justify-center items-center gap-6 mt-auto">
+                    <button id="play-stop-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-500 focus:ring-opacity-50">
+                        <span id="play-icon">▶</span> <span id="stop-icon" class="hidden">■</span>
+                    </button>
+
+                    <div class="flex flex-col items-center">
+                        <label for="bpm-slider" class="text-lg font-medium mb-2">BPM: <span id="bpm-value">120</span></label>
+                        <input type="range" id="bpm-slider" min="60" max="200" value="120" class="w-48 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer range-lg accent-blue-400">
+                    </div>
+
+                    <div class="flex flex-col items-center">
+                        <label for="volume-slider" class="text-lg font-medium mb-2">Volume: <span id="volume-value">-10</span> dB</label>
+                        <input type="range" id="volume-slider" min="-30" max="0" value="-10" class="w-48 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer range-lg accent-blue-400">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Ensure the Tone.js audio context is started on a user interaction for browser compatibility
+        window.onload = async () => {
+            document.documentElement.addEventListener('mousedown', async () => {
+                if (Tone.context.state !== 'running') {
+                    await Tone.start();
+                    console.log('AudioContext started');
+                }
+            }, { once: true });
+
+            // --- Tone.js Instruments Setup ---
+            // Using Tone.js built-in synths for drum sounds for simplicity and to avoid external assets.
+            // Each synth is routed directly to the master output (toDestination()).
+
+            const kick = new Tone.MembraneSynth({
+                envelope: {
+                    sustain: 0.01,
+                    release: 0.05
+                },
+                octaves: 10
+            }).toDestination();
+
+            const snare = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: {
+                    attack: 0.005,
+                    decay: 0.1,
+                    sustain: 0.005,
+                    release: 0.1
+                }
+            }).toDestination();
+
+            // Lower volume for hats
+            const closedHat = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: {
+                    attack: 0.001,
+                    decay: 0.05,
+                    sustain: 0.001,
+                    release: 0.05
+                }
+            }).toDestination().volume.value = -10; // Lower volume
+
+            const openHat = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: {
+                    attack: 0.001,
+                    decay: 0.2,
+                    sustain: 0.001,
+                    release: 0.2
+                }
+            }).toDestination().volume.value = -10; // Lower volume
+
+            const clap = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: {
+                    attack: 0.005,
+                    decay: 0.15,
+                    sustain: 0.01,
+                    release: 0.15
+                }
+            }).toDestination();
+
+            // Store instruments in an object for easy access
+            const instruments = {
+                kick,
+                snare,
+                closedHat,
+                openHat,
+                clap
+            };
+
+            // --- Drum Patterns Data Structure ---
+            // Patterns are stored by genre. Each pattern is a 16-step array (one bar of 16th notes).
+            // These 16-step patterns will be looped by Tone.js to simulate 8 bars.
+            // 1 indicates a hit, 0 indicates no hit.
+            const drumPatterns = {
+                "Hip Hop": [],
+                "R&B": [],
+                "Trap": [],
+                "Drill": [],
+                "Soul": [],
+                "Salsa": [],
+                "UK Drill": [],
+                "Pop": [],
+                "Reggae": [],
+                "Afrobeats": [],
+                "London Grime": []
+            };
+
+            // Recommended BPMs for each genre
+            const genreBPMs = {
+                "Hip Hop": 90,
+                "R&B": 75,
+                "Trap": 140,
+                "Drill": 145,
+                "Soul": 80,
+                "Salsa": 180,
+                "UK Drill": 140,
+                "Pop": 120,
+                "Reggae": 70,
+                "Afrobeats": 110,
+                "London Grime": 140
+            };
+
+            // Helper function to generate a unique ID for each pattern
+            const generatePatternId = (genre, index) => `${genre.replace(/\s/g, '')}-${String(index).padStart(3, '0')}`;
+
+            // Helper function to create a pattern object with all drum parts
+            const createPattern = (name, kickPattern, snarePattern, closedHatPattern, openHatPattern, clapPattern) => ({
+                id: '', // Placeholder, will be filled by generatePatternId
+                name: name,
+                kick: kickPattern,
+                snare: snarePattern,
+                closedHat: closedHatPattern,
+                openHat: openHatPattern,
+                clap: clapPattern
+            });
+
+            // --- Core Pattern Definitions (16-step loops) ---
+            // These are the foundational patterns for each genre.
+            const corePatterns = {
+                "Hip Hop": [
+                    createPattern("Boom Bap Classic",
+                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], // Kick
+                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], // Snare
+                        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // Closed Hat
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Open Hat
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]  // Clap
+                    ),
+                    createPattern("Smooth Groove",
+                        [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0],
+                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    ),
+                    createPattern("Laid Back Beat",
+                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                        [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    ),
+                    createPattern("Gritty Hip Hop",
+                        [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],
+                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                        [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    )
+                ],
+                "R&B": [
+                    createPattern("Neo Soul Vibe",
+                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                        [0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    ),
+                    createPattern("Slow Jam Pulse",
+                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                        [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    ),
+                    createPattern("Chill R&B Sway",
+                        [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0],
+                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                        [1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    ),
+                    createPattern("Modern R&B",
+                        [1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0],
+                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                        [0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    )
+                ],
+                "Trap": [
+                    createPattern("808 Power Hit",
+                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    ),
+                    createPattern("Hi-Hat Roll Fury",
+                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                        [1,0,1,1,0,1,1,0,1,0,1,1,0,1,1,0], // Example of a hi-hat roll
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    ),
+                    createPattern("Heavy Trap Groove",
+                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                        [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0
