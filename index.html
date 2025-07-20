@@ -3,310 +3,1344 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drum Pattern Producer App</title>
+    <title>O.T.G. Drums</title>
+    <!-- Google Fonts: Inter & Roboto Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js CDN for Web Audio -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <!-- midi-writer-js CDN for MIDI export (Browser-compatible version) -->
+    <script src="https://cdn.jsdelivr.net/npm/midi-writer-js@1.7.4/build/MidiWriter.min.js"></script>
     <style>
-        /* Apply Inter font and dark theme to the body */
+        /* Apply Inter font and a dark theme */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #1a202c; /* Dark background */
-            color: #e2e8f0; /* Light text */
+            background-color: #111827; /* Dark background */
+            color: #e2e8f0; /* Light gray text */
         }
-        /* Custom scrollbar styling for the pattern list for better aesthetics */
-        .pattern-list-container::-webkit-scrollbar {
+        /* Custom scrollbar for a polished look */
+        .custom-scrollbar::-webkit-scrollbar {
             width: 8px;
         }
-        .pattern-list-container::-webkit-scrollbar-track {
-            background: #2d3748; /* Darker track */
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1f2937; /* Darker gray track */
             border-radius: 10px;
         }
-        .pattern-list-container::-webkit-scrollbar-thumb {
-            background: #4a5568; /* Lighter thumb */
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #4b5563; /* Medium gray thumb */
             border-radius: 10px;
         }
-        .pattern-list-container::-webkit-scrollbar-thumb:hover {
-            background: #6b7280; /* Even lighter on hover */
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* Lighter gray on hover */
         }
-        /* Custom range slider styling for better visual consistency */
+        /* Custom range slider styles for a modern feel */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #374151; /* Dark gray track */
+            height: 0.5rem;
+            border-radius: 0.5rem;
+        }
+        input[type="range"]::-moz-range-track {
+            background: #374151; /* Dark gray track */
+            height: 0.5rem;
+            border-radius: 0.5rem;
+        }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 20px;
-            height: 20px;
+            margin-top: -6px; /* Center thumb on track */
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
-            background: #3b82f6; /* Blue accent color */
-            cursor: pointer;
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5); /* Ring effect */
-            transition: background .15s ease-in-out;
+            background: #dc2626; /* Red thumb */
+            border: 4px solid #111827; /* Dark background border */
+            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.5); /* Red shadow */
         }
         input[type="range"]::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
-            background: #3b82f6;
-            cursor: pointer;
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
-            transition: background .15s ease-in-out;
+            background: #dc2626; /* Red thumb */
+            border: 4px solid #111827; /* Dark background border */
+            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.5); /* Red shadow */
         }
-        input[type="range"]:hover::-webkit-slider-thumb {
-            background: #2563eb; /* Darker blue on hover */
+        /* Style for the pattern grid cells */
+        .grid-cell {
+            transition: background-color 0.1s ease-in-out;
+            cursor: pointer; /* Indicate clickable */
+            background-color: #374151; /* Default background for cells */
         }
-        input[type="range"]:hover::-moz-range-thumb {
-            background: #2563eb;
+        .grid-cell.alt-bg { /* New class for alternating background */
+            background-color: #1f2937; /* Even darker background for alternating steps */
+        }
+        .grid-cell.active {
+            background-color: #dc2626; /* Red for active notes */
+            box-shadow: 0 0 10px rgba(220, 38, 38, 0.8); /* Stronger red glow */
+            border: 1px solid #f87171; /* Light red border */
+        }
+        .grid-cell.playing, .step-number.playing {
+            background-color: #f59e0b !important; /* Amber for the playhead (kept for distinction) */
+            color: #111827;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.7);
+        }
+        /* Video typewriter style for time/date */
+        .video-typewriter {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9rem;
+            color: #a0aec0; /* Light gray */
+            background-color: #1a202c; /* Darker background */
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            border: 1px solid #2d3748;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+        }
+        /* O.T.G. Drums title font */
+        .otg-title-font {
+            font-family: 'Roboto Mono', monospace;
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
 
-    <div class="bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-5xl">
-        <h1 class="text-4xl font-bold text-center mb-8 text-blue-400">Drum Pattern Producer</h1>
+    <div class="bg-gray-900 rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-7xl">
+        <div class="flex justify-between items-start mb-8">
+            <div class="flex-grow"></div> <!-- Spacer to push title to right -->
+            <div class="text-right">
+                <h1 class="text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-500 to-red-700 mb-2 otg-title-font">O.T.G. Drums</h1>
+                <div id="datetime-display" class="video-typewriter"></div>
+            </div>
+        </div>
 
-        <div class="mb-8 flex flex-wrap justify-center gap-4">
-            <button class="genre-btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Hip Hop">Hip Hop</button>
-            <button class="genre-btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="R&B">R&B</button>
-            <button class="genre-btn bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Trap">Trap</button>
-            <button class="genre-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Drill">Drill</button>
-            <button class="genre-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Soul">Soul</button>
-            <button class="genre-btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Salsa">Salsa</button>
-            <button class="genre-btn bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="UK Drill">UK Drill</button>
-            <button class="genre-btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Pop">Pop</button>
-            <button class="genre-btn bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Reggae">Reggae</button>
-            <button class="genre-btn bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="Afrobeats">Afrobeats</button>
-            <button class="genre-btn bg-lime-600 hover:bg-lime-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105" data-genre="London Grime">London Grime</button>
+        <!-- Genre Selection Buttons (Grid Layout) -->
+        <div class="mb-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Hip Hop">Hip Hop</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="R&B">R&B</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Trap">Trap</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Drill">Drill</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="UK Drill">UK Drill</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Rock">Rock</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Pop">Pop</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Funk">Funk</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Disco">Disco</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="House">House</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Techno">Techno</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Reggae">Reggae</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Reggaeton">Reggaeton</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Afrobeats">Afrobeats</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Salsa">Salsa</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Soul">Soul</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Lo-Fi Hip Hop">Lo-Fi</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Jazz">Jazz</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Ambient">Ambient</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Drum Fills & Breaks">Fills</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Percussion">Percussion</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Breakbeats">Breakbeats</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Electronic">Electronic</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Radio Hits">Radio Hits</button>
+            <button class="genre-btn bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1" data-genre="Midwest">Midwest</button>
         </div>
 
         <div class="flex flex-col md:flex-row gap-8">
-            <div class="md:w-1/3 bg-gray-700 rounded-lg p-4 shadow-inner">
-                <h2 class="text-2xl font-semibold mb-4 text-blue-300">Patterns (<span id="current-genre-display">Hip Hop</span>)</h2>
-                <div id="pattern-list" class="pattern-list-container h-80 overflow-y-auto pr-2">
-                    </div>
+            <!-- Pattern List Section -->
+            <div class="md:w-1/3 bg-gray-800 rounded-lg p-4 shadow-inner">
+                <h2 class="text-2xl font-semibold mb-4 text-red-300">Patterns (<span id="current-genre-display">Hip Hop</span>)</h2>
+                <div id="pattern-list" class="custom-scrollbar h-96 overflow-y-auto pr-2 space-y-2">
+                    <!-- Drum pattern buttons will be dynamically loaded here -->
+                </div>
+                <button id="generate-pattern-btn" class="w-full mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-5 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-yellow-500 focus:ring-opacity-50">
+                    Generate Random Pattern
+                </button>
+                <div id="loading-spinner" class="hidden mt-2 text-center text-yellow-400">
+                    <svg class="animate-spin h-5 w-5 text-yellow-400 inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating...
+                </div>
             </div>
 
-            <div class="md:w-2/3 bg-gray-700 rounded-lg p-6 shadow-inner flex flex-col">
-                <h2 class="text-2xl font-semibold mb-4 text-blue-300">Selected Pattern: <span id="selected-pattern-name" class="text-white">None</span></h2>
+            <!-- Pattern Visualizer and Controls Section -->
+            <div class="md:w-2/3 bg-gray-800 rounded-lg p-6 shadow-inner flex flex-col">
+                <h2 class="text-2xl font-semibold mb-4 text-red-300">Selected: <span id="selected-pattern-name" class="text-white">None</span></h2>
 
-                <div id="pattern-grid-container" class="mb-6 p-2 bg-gray-900 rounded-md">
-                    </div>
+                <!-- Pattern Grid Container -->
+                <div id="pattern-grid-container" class="mb-6 p-2 bg-gray-900/50 rounded-md space-y-1">
+                    <!-- Grid will be generated here -->
+                </div>
 
-                <div class="flex flex-wrap justify-center items-center gap-6 mt-auto">
-                    <button id="play-stop-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-500 focus:ring-opacity-50">
-                        <span id="play-icon">▶</span> <span id="stop-icon" class="hidden">■</span>
+                <!-- Pattern Description and Tips -->
+                <div id="pattern-details" class="bg-gray-700 rounded-lg p-4 mt-4 text-sm">
+                    <h3 class="text-lg font-semibold text-red-300 mb-2">Pattern Info:</h3>
+                    <p id="pattern-description" class="mb-2"></p>
+                    <p id="pattern-velocity-tip" class="mb-2"></p>
+                    <p id="pattern-main-sounds"></p>
+                </div>
+
+                <!-- Playback Controls -->
+                <div class="flex flex-wrap justify-center items-center gap-4 sm:gap-6 mt-auto pt-6">
+                    <button id="play-stop-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-8 rounded-full shadow-lg transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-50 disabled:bg-gray-500 disabled:cursor-not-allowed">
+                        <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <svg id="stop-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v4H9z" /></svg>
                     </button>
 
                     <div class="flex flex-col items-center">
-                        <label for="bpm-slider" class="text-lg font-medium mb-2">BPM: <span id="bpm-value">120</span></label>
-                        <input type="range" id="bpm-slider" min="60" max="200" value="120" class="w-48 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer range-lg accent-blue-400">
+                        <label for="bpm-input" class="text-lg font-medium mb-2">BPM: <span id="bpm-value">90</span></label>
+                        <input type="number" id="bpm-input" min="60" max="200" value="90" class="w-24 bg-gray-700 text-white text-center rounded-md p-1 focus:outline-none focus:ring-2 focus:ring-red-500">
+                        <input type="range" id="bpm-slider" min="60" max="200" value="90" class="w-36 sm:w-48 mt-2">
                     </div>
 
                     <div class="flex flex-col items-center">
-                        <label for="volume-slider" class="text-lg font-medium mb-2">Volume: <span id="volume-value">-10</span> dB</label>
-                        <input type="range" id="volume-slider" min="-30" max="0" value="-10" class="w-48 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer range-lg accent-blue-400">
+                        <label for="volume-slider" class="text-lg font-medium mb-2">Volume: <span id="volume-value">-6</span> dB</label>
+                        <input type="range" id="volume-slider" min="-40" max="0" value="-6" step="1" class="w-36 sm:w-48">
                     </div>
+
+                    <button id="export-midi-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-5 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-50 disabled:bg-gray-500 disabled:cursor-not-allowed">
+                        Export MIDI
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Ensure the Tone.js audio context is started on a user interaction for browser compatibility
-        window.onload = async () => {
-            document.documentElement.addEventListener('mousedown', async () => {
-                if (Tone.context.state !== 'running') {
-                    await Tone.start();
-                    console.log('AudioContext started');
-                }
-            }, { once: true });
+        window.onload = () => {
+            // --- DOM Element References ---
+            const genreButtons = document.querySelectorAll('.genre-btn');
+            const patternListContainer = document.getElementById('pattern-list');
+            const gridContainer = document.getElementById('pattern-grid-container');
+            const playStopBtn = document.getElementById('play-stop-btn');
+            const playIcon = document.getElementById('play-icon');
+            const stopIcon = document.getElementById('stop-icon');
+            const bpmSlider = document.getElementById('bpm-slider');
+            const bpmInput = document.getElementById('bpm-input'); // New BPM input field
+            const bpmValueSpan = document.getElementById('bpm-value');
+            const volumeSlider = document.getElementById('volume-slider');
+            const volumeValueSpan = document.getElementById('volume-value');
+            const exportMidiBtn = document.getElementById('export-midi-btn');
+            const currentGenreSpan = document.getElementById('current-genre-display');
+            const selectedPatternSpan = document.getElementById('selected-pattern-name');
+            const generatePatternBtn = document.getElementById('generate-pattern-btn');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const datetimeDisplay = document.getElementById('datetime-display'); // Datetime display
+            const patternDescription = document.getElementById('pattern-description'); // Pattern description
+            const patternVelocityTip = document.getElementById('pattern-velocity-tip'); // Pattern velocity tip
+            const patternMainSounds = document.getElementById('pattern-main-sounds'); // Pattern main sounds
+
+            // --- App State ---
+            let currentGenre = 'Hip Hop';
+            let selectedPattern = null;
+            let isPlaying = false;
+            let currentSequence = null;
+            let audioReady = false;
 
             // --- Tone.js Instruments Setup ---
-            // Using Tone.js built-in synths for drum sounds for simplicity and to avoid external assets.
-            // Each synth is routed directly to the master output (toDestination()).
-
-            const kick = new Tone.MembraneSynth({
-                envelope: {
-                    sustain: 0.01,
-                    release: 0.05
-                },
-                octaves: 10
-            }).toDestination();
-
-            const snare = new Tone.NoiseSynth({
-                noise: { type: 'white' },
-                envelope: {
-                    attack: 0.005,
-                    decay: 0.1,
-                    sustain: 0.005,
-                    release: 0.1
-                }
-            }).toDestination();
-
-            // Lower volume for hats
-            const closedHat = new Tone.NoiseSynth({
-                noise: { type: 'white' },
-                envelope: {
-                    attack: 0.001,
-                    decay: 0.05,
-                    sustain: 0.001,
-                    release: 0.05
-                }
-            }).toDestination().volume.value = -10; // Lower volume
-
-            const openHat = new Tone.NoiseSynth({
-                noise: { type: 'white' },
-                envelope: {
-                    attack: 0.001,
-                    decay: 0.2,
-                    sustain: 0.001,
-                    release: 0.2
-                }
-            }).toDestination().volume.value = -10; // Lower volume
-
-            const clap = new Tone.NoiseSynth({
-                noise: { type: 'white' },
-                envelope: {
-                    attack: 0.005,
-                    decay: 0.15,
-                    sustain: 0.01,
-                    release: 0.15
-                }
-            }).toDestination();
-
-            // Store instruments in an object for easy access
             const instruments = {
-                kick,
-                snare,
-                closedHat,
-                openHat,
-                clap
+                kick: new Tone.MembraneSynth({ pitchDecay: 0.02, octaves: 6, oscillator: { type: 'sine' }, envelope: { attack: 0.001, decay: 0.5, sustain: 0.01, release: 0.8 } }).toDestination(),
+                snare: new Tone.NoiseSynth({ noise: { type: 'white', playbackRate: 1.5 }, envelope: { attack: 0.001, decay: 0.2, sustain: 0.05, release: 0.1 } }).toDestination(),
+                clap: new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination(),
+                closedHat: new Tone.MetalSynth({ frequency: 250, envelope: { attack: 0.001, decay: 0.05, release: 0.02 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5 }).toDestination(),
+                openHat: new Tone.MetalSynth({ frequency: 250, envelope: { attack: 0.001, decay: 0.3, release: 0.2 }, harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5 }).toDestination(),
             };
+            instruments.snare.volume.value = -8;
+            instruments.clap.volume.value = -10;
+            instruments.closedHat.volume.value = -15;
+            instruments.openHat.volume.value = -12;
+            Tone.Destination.volume.value = volumeSlider.value;
 
-            // --- Drum Patterns Data Structure ---
-            // Patterns are stored by genre. Each pattern is a 16-step array (one bar of 16th notes).
-            // These 16-step patterns will be looped by Tone.js to simulate 8 bars.
-            // 1 indicates a hit, 0 indicates no hit.
-            const drumPatterns = {
-                "Hip Hop": [],
-                "R&B": [],
-                "Trap": [],
-                "Drill": [],
-                "Soul": [],
-                "Salsa": [],
-                "UK Drill": [],
-                "Pop": [],
-                "Reggae": [],
-                "Afrobeats": [],
-                "London Grime": []
-            };
-
-            // Recommended BPMs for each genre
-            const genreBPMs = {
-                "Hip Hop": 90,
-                "R&B": 75,
-                "Trap": 140,
-                "Drill": 145,
-                "Soul": 80,
-                "Salsa": 180,
-                "UK Drill": 140,
-                "Pop": 120,
-                "Reggae": 70,
-                "Afrobeats": 110,
-                "London Grime": 140
-            };
-
-            // Helper function to generate a unique ID for each pattern
-            const generatePatternId = (genre, index) => `${genre.replace(/\s/g, '')}-${String(index).padStart(3, '0')}`;
-
-            // Helper function to create a pattern object with all drum parts
-            const createPattern = (name, kickPattern, snarePattern, closedHatPattern, openHatPattern, clapPattern) => ({
-                id: '', // Placeholder, will be filled by generatePatternId
-                name: name,
-                kick: kickPattern,
-                snare: snarePattern,
-                closedHat: closedHatPattern,
-                openHat: openHatPattern,
-                clap: clapPattern
+            // --- Pattern Data ---
+            // Pattern creation helper function including new detail fields
+            const createPattern = (name, kick, snare, clap, closedHat, openHat, description = '', suggestedVelocity = '', mainSounds = '') => ({
+                name, kick, snare, clap, closedHat, openHat, description, suggestedVelocity, mainSounds
             });
 
-            // --- Core Pattern Definitions (16-step loops) ---
-            // These are the foundational patterns for each genre.
-            const corePatterns = {
+            const genreBPMs = {
+                "Hip Hop": 92, "R&B": 78, "Trap": 145, "Drill": 148, "UK Drill": 142, "Rock": 120,
+                "Pop": 118, "Funk": 105, "Disco": 122, "House": 128, "Techno": 130, "Reggae": 72,
+                "Reggaeton": 98, "Afrobeats": 112, "Salsa": 185, "Soul": 85, "Lo-Fi Hip Hop": 82,
+                "Jazz": 110, "Ambient": 65, "Drum Fills & Breaks": 125, "Percussion": 100,
+                "Breakbeats": 135,
+                "Electronic": 128,
+                "Radio Hits": 105, // General average for diverse radio hits
+                "Midwest": 130 // Average for Midwest Hip Hop/Drill
+            };
+            
+            const emptyPattern = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+
+            // --- Massively Expanded & Corrected Drum Patterns ---
+            const drumPatterns = {
                 "Hip Hop": [
-                    createPattern("Boom Bap Classic",
-                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], // Kick
-                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], // Snare
-                        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // Closed Hat
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Open Hat
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]  // Clap
-                    ),
-                    createPattern("Smooth Groove",
-                        [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0],
-                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
-                        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-                    ),
-                    createPattern("Laid Back Beat",
-                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
-                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
-                        [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-                    ),
-                    createPattern("Gritty Hip Hop",
-                        [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],
-                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
-                        [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-                    )
+                    createPattern("Classic Boom Bap", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A foundational Hip Hop beat with a strong kick on 1 and a snare on 5 and 13. Perfect for lyrical flows.",
+                        "Kick: High, Snare: Medium, Hats: Consistent", "Warm Rhodes, upright bass, vocal samples."),
+                    createPattern("90s Laid Back", [1,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,0], emptyPattern,
+                        "Characterized by a slightly swung feel and sparse kicks, giving it a relaxed, head-nodding groove.",
+                        "Kick: Medium-low, Snare: Medium, Hats: Varied swing", "Jazzy samples, mellow synths, smooth basslines."),
+                    createPattern("Modern Bap", [1,0,0,0,0,1,0,0,1,0,0,0,1,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1], emptyPattern,
+                        "A contemporary take on boom bap, often with slightly more complex kick patterns and tighter hats.",
+                        "Kick: Punchy, Snare: Crisp, Hats: Tight", "Modern synth pads, sampled instruments, strong lead melodies."),
+                    createPattern("J Dilla Swing", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], emptyPattern,
+                        "Known for its signature off-kilter, humanized swing, making it feel organic and soulful.",
+                        "Kick: Varied, Snare: Ghost notes, Hats: Heavy swing", "Chopped soul/jazz samples, warm bass, dusty textures."),
+                    createPattern("Grimey East Coast", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A hard-hitting, aggressive beat often found in 90s East Coast Hip Hop, with driving kicks.",
+                        "Kick: High, Snare: Punchy, Hats: Straight", "Dark synth pads, gritty samples, aggressive vocals."),
+                    createPattern("Trap-influenced Hip Hop", [1,0,0,0,0,1,0,0,1,0,0,0,1,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "Blends traditional Hip Hop structure with Trap's energetic hi-hats and punchy 808s.",
+                        "Kick: Heavy, Snare: Sharp, Hats: Fast rolls/triplets", "Deep 808s, atmospheric synths, melodic loops."),
+                    createPattern("Jazzy Hip Hop", [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Smooth, often swung, with intricate hi-hat work and a focus on laid-back grooves, inspired by A Tribe Called Quest.",
+                        "Kick: Soft, Snare: Medium, Hats: Swung, subtle", "Jazz samples, Rhodes piano, walking basslines."),
+                    createPattern("Smooth 808 Hip Hop", [1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A modern hip-hop beat emphasizing a deep, resonant 808 kick and steady rhythm.",
+                        "Kick: Very low, Snare: Medium, Hats: Consistent", "Smooth synths, vocal chops, sub-bass."),
+                    createPattern("East Coast Bounce", [1,0,0,1,0,0,0,0,1,0,0,1,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A classic East Coast feel with a driving kick pattern and a solid backbeat.",
+                        "Kick: Punchy, Snare: Sharp, Hats: Steady", "Gritty samples, brass stabs, classic rap vocals."),
+                    createPattern("Kanye West Vibe", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Soulful and often sample-driven, with a distinctive swing and impactful drums.",
+                        "Kick: Full, Snare: Snappy, Hats: Varied", "Chopped soul samples, orchestral elements, strong bassline."),
+                    createPattern("Swizz Beatz Punch", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Known for its aggressive, sparse, and often syncopated drum patterns with heavy kicks and claps.",
+                        "Kick: Very heavy, Snare: Loud, Claps: Prominent", "Gritty synths, vocal ad-libs, simple but powerful melodies."),
+                    createPattern("Outkast Southernplayalistic", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A laid-back, funky Southern Hip Hop groove with a distinct bounce.",
+                        "Kick: Boomy, Snare: Laid-back, Hats: Loose", "Live-sounding instruments, soulful samples, deep bass."),
+                    createPattern("Jay-Z Hard Knock Life", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A classic anthemic Hip Hop beat with a strong, driving rhythm and clear snare on 2 & 4.",
+                        "Kick: Punchy, Snare: Loud, Hats: Consistent", "Orchestral samples, piano, strong vocal presence."),
+                    createPattern("RZA Gritty Beat", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], emptyPattern,
+                        "Raw, often dark and minimalist, with a strong emphasis on texture and hard-hitting drums.",
+                        "Kick: Distorted, Snare: Sharp, Hats: Sparse", "Gritty samples, dark synths, cinematic textures."),
+                    createPattern("The Roots Live Feel", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Emulates the feel of live drumming, often with subtle ghost notes and a natural swing.",
+                        "Kick: Organic, Snare: Dynamic, Hats: Varied, humanized", "Live bass, guitar, keys, organic instrumentation."),
+                    createPattern("Tribe Called Quest Jazz-Rap", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Smooth, sophisticated, and often swung, with intricate hi-hat patterns and a jazzy feel.",
+                        "Kick: Soft, Snare: Laid-back, Hats: Swung, subtle", "Jazz samples, vibraphone, warm bass."),
+                    createPattern("Kendrick Lamar Conscious", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Often complex and dynamic, blending traditional hip-hop with modern elements and impactful moments.",
+                        "Kick: Punchy, Snare: Sharp, Hats: Varied, sometimes sparse", "Live instrumentation, dark synths, impactful samples."),
+                    createPattern("Travis Scott Dark", [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "Characterized by sparse, heavy kicks and snares, often with atmospheric hi-hats and a dark, moody feel.",
+                        "Kick: Deep 808, Snare: Loud, Hats: Atmospheric", "Dark pads, distorted synths, eerie melodies."),
+                    createPattern("Lil Uzi Vert Hyper", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1],
+                        "Energetic and often chaotic, with rapid-fire hi-hat rolls and punchy, driving kicks.",
+                        "Kick: Punchy, Snare: Sharp, Hats: Fast, triplet rolls", "Bright synths, energetic melodies, distorted vocals."),
+                    createPattern("Metro Boomin Cinematic", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "Sparse but impactful, with heavy 808s and snares that create a sense of space and drama.",
+                        "Kick: Sub-heavy, Snare: Loud, Hats: Minimal, precise", "Dark orchestral sounds, eerie pads, vocal samples."),
+                    createPattern("Doja Cat Pop-Rap", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Blends pop sensibilities with rap rhythms, often featuring a strong four-on-the-floor kick and catchy snares.",
+                        "Kick: Driving, Snare: Pop-oriented, Hats: Steady", "Catchy synths, vocal hooks, danceable basslines."),
+                    createPattern("Latto Hard-Hitting", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Aggressive and confident, with powerful kicks and snares that command attention.",
+                        "Kick: Punchy, Snare: Loud, Hats: Driving", "Hard-hitting synths, strong bass, confident vocals."),
+                    createPattern("Eminem Aggressive", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Fast-paced and impactful, designed to support rapid-fire lyrical delivery.",
+                        "Kick: Sharp, Snare: Crisp, Hats: Fast", "Dark, suspenseful strings, gritty synths, vocal samples."),
+                    createPattern("50 Cent Club Banger", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A driving, infectious beat perfect for the club, with a solid four-on-the-floor kick and prominent claps.",
+                        "Kick: Heavy, Snare: Loud, Claps: Punchy", "Simple synth melodies, strong basslines, catchy hooks."),
+                    createPattern("Nelly Stomp", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A laid-back, bouncy beat with a distinctive Southern feel, often featuring syncopated kicks.",
+                        "Kick: Boomy, Snare: Laid-back, Hats: Consistent", "Guitar riffs, soulful vocal samples, smooth synths."),
+                    createPattern("Black Eyed Peas Party", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Upbeat and energetic, designed for dancing, with a strong emphasis on the main beat.",
+                        "Kick: Driving, Snare: Prominent, Hats: Energetic", "Catchy synth hooks, vocal harmonies, strong basslines."),
+                    createPattern("Dr. Dre G-Funk", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Known for its laid-back, funky, and often swung grooves with prominent 808s and crisp snares.",
+                        "Kick: Deep, Snare: Crisp, Hats: Laid-back", "Whiny synths, funky basslines, soulful samples."),
+                    createPattern("Notorious B.I.G. Classic", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A smooth, confident, and often slightly swung beat, perfect for lyrical storytelling.",
+                        "Kick: Solid, Snare: Punchy, Hats: Consistent", "Soul samples, orchestral hits, strong bass."),
+                    createPattern("Mase Feel Good", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Upbeat and catchy, with a driving rhythm that makes you want to dance.",
+                        "Kick: Energetic, Snare: Pop, Hats: Consistent", "Bright synths, vocal hooks, danceable basslines."),
                 ],
                 "R&B": [
-                    createPattern("Neo Soul Vibe",
-                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
-                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
-                        [0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-                    ),
-                    createPattern("Slow Jam Pulse",
-                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
-                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
-                        [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-                    ),
-                    createPattern("Chill R&B Sway",
-                        [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0],
-                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
-                        [1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-                    ),
-                    createPattern("Modern R&B",
-                        [1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0],
-                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
-                        [0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-                    )
+                    createPattern("Smooth Groove", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,0,1,1,0,1,1,1,1,0,1,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A classic R&B groove with a laid-back feel and subtle syncopation.",
+                        "Kick: Soft, Snare: Medium, Hats: Smooth", "Rhodes piano, smooth bass, lush pads."),
+                    createPattern("Trap Soul", [1,0,0,0,0,1,0,0,0,0,1,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,0,1,1,0,1,1,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        "Blends Trap's heavy 808s and hi-hats with R&B's melodic and vocal sensibilities.",
+                        "Kick: Heavy 808, Snare: Sharp, Hats: Fast, sparse", "Atmospheric pads, vocal samples, deep sub-bass."),
+                    createPattern("Neo-Soul Vibe", [1,0,0,1,0,0,0,0,1,0,0,1,0,0,1,0], [0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,1,1,0,1,1,0,1,0,1,1,0,1,1,0,1], emptyPattern,
+                        "Complex and organic, often with a live-band feel, intricate ghost notes, and a smooth swing.",
+                        "Kick: Varied, Snare: Ghosted, Hats: Humanized swing", "Rhodes, Wurlitzer, live bass, soulful vocals."),
+                    createPattern("Slow Jam", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A slow, romantic beat with a strong emphasis on the backbeat and a lingering open hi-hat.",
+                        "Kick: Soft, Snare: Prominent, Hats: Long decay", "Smooth chords, vocal harmonies, warm pads."),
+                    createPattern("Modern R&B Bounce", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], emptyPattern,
+                        "A contemporary R&B beat with a subtle bounce and a focus on rhythmic space.",
+                        "Kick: Punchy, Snare: Crisp, Hats: Consistent", "Modern synths, vocal ad-libs, clean bass."),
+                    createPattern("Classic R&B Shuffle", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A soulful shuffle groove with a driving kick and a consistent hi-hat pattern.",
+                        "Kick: Solid, Snare: Medium, Hats: Driving", "Organ, brass, soulful vocals, live bass."),
+                    createPattern("R&B Ballad", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "Very sparse and emotional, focusing on the main kick and snare hits to support vocals.",
+                        "Kick: Soft, Snare: Gentle, Hats: Absent or very sparse", "Piano, strings, lush pads, emotional vocals."),
+                    createPattern("Contemporary R&B", [1,0,0,0,0,1,0,0,1,0,0,0,0,1,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], emptyPattern,
+                        "A smooth, polished beat with subtle syncopation and a modern feel.",
+                        "Kick: Clean, Snare: Crisp, Hats: Precise", "Digital synths, smooth vocal layers, clean bass."),
+                    createPattern("Gospel R&B", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Often features a strong, driving rhythm with a powerful backbeat and energetic hi-hats.",
+                        "Kick: Powerful, Snare: Loud, Hats: Driving", "Organ, piano, choir pads, powerful vocals."),
+                    createPattern("Teddy Riley New Jack Swing", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Characterized by a strong swing, prominent claps, and a danceable, upbeat groove.",
+                        "Kick: Punchy, Snare: Snappy, Claps: Loud", "Digital synths, sampled vocal stabs, driving basslines."),
+                    createPattern("Tony! Toni! Toné! Vibe", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Smooth, organic, and soulful, often with a laid-back feel and subtle rhythmic variations.",
+                        "Kick: Warm, Snare: Soft, Hats: Relaxed", "Live instruments, soulful vocals, smooth harmonies."),
+                    createPattern("Timbaland-esque Groove", [1,0,0,0,0,1,0,0,1,0,0,0,0,1,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "Known for its unique, often syncopated and sparse, yet incredibly funky and impactful drum patterns.",
+                        "Kick: Punchy, Snare: Crisp, Hats: Varied, off-kilter", "Unique synth sounds, vocal effects, strong bass."),
+                    createPattern("R. Kelly Slow Grind", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A sensual, slow-tempo beat with a strong emphasis on the backbeat and a smooth, consistent feel.",
+                        "Kick: Deep, Snare: Prominent, Hats: Steady", "Smooth synths, vocal harmonies, deep bass."),
+                    createPattern("Chris Brown Upbeat", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Energetic and danceable, often with a driving four-on-the-floor kick and crisp snares.",
+                        "Kick: Driving, Snare: Sharp, Hats: Consistent", "Catchy synth melodies, strong vocal performance, pop elements."),
+                    createPattern("SZA Alt R&B", [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "Often sparse and atmospheric, with a focus on groove and emotional depth rather than overt complexity.",
+                        "Kick: Subdued, Snare: Laid-back, Hats: Loose, airy", "Atmospheric pads, ethereal vocals, subtle bass."),
+                    createPattern("Drake Smooth Flow", [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "Characterized by a smooth, often half-time feel, with deep 808s and subtle, intricate hi-hats.",
+                        "Kick: Deep, Snare: Crisp, Hats: Sparse, precise", "Ambient pads, melodic samples, smooth vocal delivery."),
+                    createPattern("Erykah Badu Live Feel", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Organic and soulful, often with a loose, humanized feel and a focus on the pocket.",
+                        "Kick: Warm, Snare: Dynamic, Hats: Swung, natural", "Live bass, Rhodes, soulful vocals, subtle percussion."),
+                    createPattern("Musiq Soulchild Neo-Soul", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], emptyPattern,
+                        "Smooth and intricate, often featuring complex hi-hat patterns and a laid-back, soulful groove.",
+                        "Kick: Soft, Snare: Snappy, Hats: Detailed, swung", "Rhodes, vocal harmonies, smooth basslines."),
+                    createPattern("D'Angelo Voodoo Groove", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,1,0,0,1,1,0,1,0,1,0,0,1,1,0,1], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], emptyPattern,
+                        "Highly syncopated and polyrhythmic, with a loose, almost drunken feel that's deeply funky.",
+                        "Kick: Varied, Snare: Ghosted, Hats: Complex, irregular", "Live bass, electric piano, layered vocals."),
+                    createPattern("Mary J. Blige Hip-Hop Soul", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Combines raw hip-hop drums with soulful melodies and strong vocal performances.",
+                        "Kick: Punchy, Snare: Loud, Hats: Consistent", "Soul samples, piano, strong vocal hooks."),
+                    createPattern("Usher Pop R&B", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Upbeat and danceable, with a driving four-on-the-floor kick and a clear pop sensibility.",
+                        "Kick: Driving, Snare: Pop-oriented, Hats: Steady", "Catchy synth melodies, vocal harmonies, danceable basslines."),
+                    createPattern("Alicia Keys Soulful", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Often features a live, organic feel with prominent piano and a strong, emotional backbeat.",
+                        "Kick: Warm, Snare: Expressive, Hats: Natural", "Piano, strings, soulful vocals, acoustic bass."),
+                    createPattern("Boyz II Men Ballad", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A slow, tender beat with a focus on supporting lush vocal harmonies and emotional melodies.",
+                        "Kick: Soft, Snare: Gentle, Hats: Sparse", "Strings, piano, vocal harmonies, smooth bass."),
+                    createPattern("Mariah Carey Pop R&B", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Often features a strong, driving pop rhythm with R&B vocal flourishes.",
+                        "Kick: Driving, Snare: Pop-oriented, Hats: Consistent", "Catchy synth melodies, powerful vocals, lush harmonies."),
+                    createPattern("Lauryn Hill Neo-Soul", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Organic, often with a live feel, intricate rhythms, and a deep soulful pocket.",
+                        "Kick: Warm, Snare: Dynamic, Hats: Swung, natural", "Live bass, guitar, soulful vocals, subtle percussion."),
+                    createPattern("Fugees Hip-Hop Soul", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Blends classic hip-hop drum breaks with soulful melodies and reggae influences.",
+                        "Kick: Punchy, Snare: Crisp, Hats: Varied", "Soul samples, reggae guitar, vocal harmonies."),
                 ],
                 "Trap": [
-                    createPattern("808 Power Hit",
-                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
-                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
-                        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-                    ),
-                    createPattern("Hi-Hat Roll Fury",
-                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
-                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
-                        [1,0,1,1,0,1,1,0,1,0,1,1,0,1,1,0], // Example of a hi-hat roll
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-                    ),
-                    createPattern("Heavy Trap Groove",
-                        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
-                        [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
-                        [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0,0
+                    createPattern("Classic Trap", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "The quintessential Trap beat with a half-time feel, sparse kicks, and rapid hi-hats.",
+                        "Kick: Heavy 808, Snare: Sharp, Hats: Fast, triplet rolls", "Deep sub-bass, dark synths, melodic arps."),
+                    createPattern("Triplet Flow", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "Emphasizes intricate triplet hi-hat patterns over a solid kick and snare foundation.",
+                        "Kick: Punchy, Snare: Crisp, Hats: Very fast triplet rolls", "Aggressive synths, vocal chants, driving melodies."),
+                    createPattern("Heavy 808", [1,0,1,0,0,1,0,0,1,0,0,0,1,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0],
+                        "A beat dominated by a powerful, resonant 808 kick that often carries the bassline.",
+                        "Kick: Very heavy, Snare: Loud, Hats: Steady", "Sub-bass, dark pads, simple melodic loops."),
+                    createPattern("Minimalist Trap", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "Sparse and impactful, focusing on the core elements of kick, snare, and hi-hats with minimal clutter.",
+                        "Kick: Focused, Snare: Clean, Hats: Precise, sparse", "Eerie pads, simple synth lines, vocal ad-libs."),
+                    createPattern("Fast Hi-Hat Roll", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1],
+                        "Features continuous or very frequent hi-hat rolls, creating a sense of urgency and energy.",
+                        "Kick: Driving, Snare: Punchy, Hats: Continuous rolls", "Aggressive synths, fast arps, vocal samples."),
+                    createPattern("Half-Time Trap", [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Creates a slower, more spacious feel despite a high BPM, by placing kicks and snares on half notes.",
+                        "Kick: Deep, Snare: Strong, Hats: Fast, atmospheric", "Ethereal pads, melodic vocal samples, sub-bass."),
+                    createPattern("Aggressive Trap", [1,0,1,0,0,0,1,0,1,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1], emptyPattern,
+                        "A hard-hitting beat with driving kicks and snares, often used for more intense Trap tracks.",
+                        "Kick: Very punchy, Snare: Loud, Hats: Driving", "Distorted synths, aggressive melodies, vocal shouts."),
+                    createPattern("Driving Trap", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A relentless, forward-moving beat with consistent kick patterns, pushing the energy.",
+                        "Kick: Consistent, Snare: Steady, Hats: Continuous", "Energetic synths, arpeggios, driving basslines."),
+                    createPattern("Trap Roll Madness", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,1,1,1,0,1,1,1,0,1,1,1,0,1,1,1],
+                        "Features complex and unpredictable hi-hat rolls, creating a busy and dynamic top-end.",
+                        "Kick: Solid, Snare: Sharp, Hats: Highly varied, complex rolls", "Fast arps, vocal chops, dynamic synth leads."),
+                    createPattern("Atlanta Trap", [1,0,0,0,0,1,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "A classic Southern Trap sound with a strong bounce and characteristic hi-hat patterns.",
+                        "Kick: Boomy 808, Snare: Crisp, Hats: Consistent, subtle rolls", "Catchy synth melodies, vocal ad-libs, deep bass."),
+                    createPattern("21 Savage Dark Trap", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "Sparse, menacing, and often half-time, with heavy 808s and a focus on atmosphere.",
+                        "Kick: Sub-heavy, Snare: Loud, Hats: Sparse, dark", "Eerie pads, distorted synths, haunting vocal samples."),
+                    createPattern("2 Chainz Trap Anthem", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A straightforward, hard-hitting beat designed for high-energy performances, with prominent claps.",
+                        "Kick: Punchy, Snare: Strong, Claps: Loud", "Simple, catchy synth loops, vocal ad-libs, heavy bass."),
+                    createPattern("Cardi B Pop Trap", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Blends pop structure with trap drums, often featuring a driving kick and catchy snare patterns.",
+                        "Kick: Driving, Snare: Pop-oriented, Hats: Steady", "Catchy synth melodies, strong vocal presence, danceable basslines."),
+                    createPattern("Jack Harlow Laid Back", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A smooth, confident beat with a relaxed feel, often featuring subtle swing and prominent bass.",
+                        "Kick: Boomy, Snare: Laid-back, Hats: Consistent", "Smooth samples, mellow synths, strong vocal presence."),
+                ],
+                "Drill": [
+                    createPattern("Chicago Glide", [1,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0], [0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0], [0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0], [0,1,1,0,1,1,0,0,1,1,0,0,1,1,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "Characterized by its signature sliding 808s and off-kilter snare patterns.",
+                        "Kick: Sliding 808, Snare: Syncopated, Hats: Sparse, sharp", "Dark pads, eerie melodies, distorted vocals."),
+                    createPattern("Counter-Snare", [1,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0], [0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0], [0,1,0,1,0,1,0,0,1,0,1,0,1,0,0,0], emptyPattern,
+                        "Features snares placed on unexpected off-beats, creating a disjointed yet groovy feel.",
+                        "Kick: Punchy, Snare: Off-beat, Hats: Varied", "Gritty synths, dark atmospheres, aggressive vocal delivery."),
+                    createPattern("Drill Bounce", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0], [0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0], [0,1,1,0,1,1,0,0,1,1,0,0,1,1,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "A more danceable Drill beat with a consistent bounce and driving rhythm.",
+                        "Kick: Heavy, Snare: Sharp, Hats: Consistent, energetic", "Aggressive synths, vocal shouts, driving melodies."),
+                ],
+                "UK Drill": [
+                    createPattern("LDN Gallop", [1,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0], [0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "Known for its distinctive galloping rhythm, often created by syncopated kicks and snares.",
+                        "Kick: Galloping, Snare: Off-beat, Hats: Sharp, sparse", "Dark piano, eerie strings, gritty bass."),
+                    createPattern("Syncopated Hats", [1,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,1,0,1,0,1,1,0,1,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "Features intricate and often unpredictable hi-hat patterns over a driving beat.",
+                        "Kick: Punchy, Snare: Crisp, Hats: Complex, syncopated", "Dark synths, eerie vocal samples, heavy bass."),
+                    createPattern("Grimey UK Drill", [1,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0], [0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "A raw, aggressive UK Drill beat with a strong emphasis on the off-beat snare and driving kicks.",
+                        "Kick: Hard-hitting, Snare: Off-beat, Hats: Punchy", "Distorted bass, dark synths, aggressive vocal delivery."),
+                    createPattern("Central Cee Flow", [1,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0], [0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "Characterized by a laid-back yet driving feel, often with subtle syncopation and a strong bounce.",
+                        "Kick: Boomy, Snare: Laid-back, Hats: Consistent, subtle", "Melodic samples, smooth basslines, confident vocals."),
+                    createPattern("Skepta Grimey", [1,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0], [0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "Aggressive and raw, with a driving energy and often sparse, impactful drum hits.",
+                        "Kick: Hard, Snare: Sharp, Hats: Punchy", "Gritty synths, dark basslines, energetic vocal delivery."),
+                ],
+                "Rock": [
+                    createPattern("Classic Rock Beat", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A foundational rock beat with a steady kick on 1 and 9, and snare on 5 and 13.",
+                        "Kick: Solid, Snare: Loud, Hats: Consistent", "Electric guitar, bass, vocals."),
+                    createPattern("Hard Rock Drive", [1,0,1,0,0,0,1,0,1,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A powerful, driving beat with frequent kick drum hits, creating a heavy feel.",
+                        "Kick: Very punchy, Snare: Sharp, Hats: Driving", "Distorted guitars, powerful vocals, heavy bass."),
+                    createPattern("Punk Rock Speed", [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Fast and aggressive, with constant kick and hi-hats, typical of punk rock energy.",
+                        "Kick: Rapid, Snare: Punchy, Hats: Continuous", "Distorted guitars, raw vocals, fast basslines."),
+                    createPattern("Stadium Anthem", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A big, powerful beat designed for large venues, often with prominent claps and a driving feel.",
+                        "Kick: Grand, Snare: Loud, Claps: Prominent", "Arena rock guitars, soaring vocals, epic melodies."),
+                    createPattern("Driving Punk", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A straightforward, driving punk beat with a consistent kick and snare.",
+                        "Kick: Driving, Snare: Sharp, Hats: Consistent", "Raw guitars, energetic vocals, simple basslines."),
+                    createPattern("Blues Rock Shuffle", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], emptyPattern,
+                        "A swung, bluesy rock groove with a laid-back feel and a consistent shuffle on the hats.",
+                        "Kick: Warm, Snare: Laid-back, Hats: Swung", "Blues guitar, harmonica, soulful vocals, walking bass."),
+                    createPattern("Heavy Metal Double Bass", [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Characterized by rapid, continuous double bass drum hits, creating an intense, driving rhythm.",
+                        "Kick: Very fast, Snare: Loud, Hats: Fast, consistent", "Distorted guitars, screaming vocals, heavy bass."),
+                    createPattern("Alternative Rock", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0], emptyPattern,
+                        "Often features a more varied and less predictable drum pattern, with dynamic shifts.",
+                        "Kick: Varied, Snare: Expressive, Hats: Dynamic", "Grungy guitars, melodic bass, often melancholic vocals."),
+                    createPattern("Classic 80s Rock", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A powerful, often anthemic beat with a strong backbeat and prominent snare/clap.",
+                        "Kick: Driving, Snare: Loud, Claps: Prominent", "Big synths, soaring guitars, powerful vocals."),
+                    createPattern("Kid Rock Southern Rock", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A blend of rock and country influences, often with a driving, slightly raw feel.",
+                        "Kick: Solid, Snare: Punchy, Hats: Consistent", "Slide guitar, banjo, harmonica, gritty vocals."),
+                ],
+                "Pop": [
+                    createPattern("Four On The Floor", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A driving, consistent beat with a kick on every quarter note, common in dance and pop.",
+                        "Kick: Steady, Snare: Crisp, Hats: Consistent", "Catchy synths, vocal hooks, driving basslines."),
+                    createPattern("Syncopop", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Pop beat with subtle syncopation, adding rhythmic interest while remaining accessible.",
+                        "Kick: Varied, Snare: Punchy, Claps: Accentuated", "Bright synths, layered vocals, energetic melodies."),
+                    createPattern("80s Pop", [1,0,1,0,0,0,1,0,1,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Classic 80s pop sound, often with gated reverb snares and a driving feel.",
+                        "Kick: Punchy, Snare: Gated, Claps: Prominent", "Synthesizers, electric guitar, catchy vocal melodies."),
+                    createPattern("Rihanna Pop Anthem", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Modern pop beat with a strong, confident groove and a driving four-on-the-floor feel.",
+                        "Kick: Powerful, Snare: Sharp, Hats: Consistent", "Big synths, vocal hooks, driving basslines."),
+                ],
+                "Funk": [
+                    createPattern("Funky Drummer", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,1,0,0,1,1,0,1,0,1,0,0,1,1,0,1], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "An iconic breakbeat with a highly syncopated and swung feel, emphasizing ghost notes and intricate hi-hats.",
+                        "Kick: Varied, Snare: Ghosted, Hats: Swung, intricate", "Funky guitar, walking bass, soulful vocals."),
+                    createPattern("Tight Pocket", [1,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1], emptyPattern, [1,0,1,1,0,1,1,0,1,0,1,1,0,1,1,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        "A precise and grooving beat where all elements fit perfectly, creating a solid, unshakeable rhythm.",
+                        "Kick: Precise, Snare: Snappy, Hats: Tight", "Clean guitar, solid bass, rhythmic keys."),
+                    createPattern("Breakdown Groove", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A simpler, foundational funk groove often used for instrumental breakdowns or verses.",
+                        "Kick: Steady, Snare: Clear, Hats: Consistent", "Sparse instrumentation, vocal ad-libs, building tension."),
+                    createPattern("Parliament Funkadelic", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,1,0,0,1,1,0,1,0,1,0,0,1,1,0,1], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Highly complex and psychedelic, with layered rhythms and a strong, infectious groove.",
+                        "Kick: Varied, Snare: Ghosted, Hats: Intricate, loose", "Wah-wah guitar, synth leads, vocal chants, heavy bass."),
+                ],
+                "Disco": [
+                    createPattern("Le Freak", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,1,1,0,1,1,1,0,1,1,1,0,1,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        "A classic disco beat with a driving four-on-the-floor kick and a prominent hi-hat pattern.",
+                        "Kick: Driving, Snare: Crisp, Hats: Off-beat accents", "Funky bassline, string sections, vocal harmonies."),
+                    createPattern("Stayin' Alive", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1],
+                        "Iconic disco beat with a strong four-on-the-floor kick and a driving open hi-hat on the off-beats.",
+                        "Kick: Steady, Snare: Loud, Hats: Open, consistent", "Orchestral strings, funky guitar, falsetto vocals."),
+                ],
+                "House": [
+                    createPattern("Classic House", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A foundational house beat with a four-on-the-floor kick and off-beat hi-hats.",
+                        "Kick: Driving, Snare: Crisp, Hats: Off-beat", "Piano chords, soulful vocals, deep basslines."),
+                    createPattern("Deep House", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A more mellow and atmospheric house beat, often with a subtle swing and lush pads.",
+                        "Kick: Subdued, Snare: Soft, Hats: Smooth, consistent", "Warm pads, soulful vocals, melodic basslines."),
+                ],
+                "Techno": [
+                    createPattern("Driving Techno", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        "A relentless, driving beat with a strong four-on-the-floor kick and consistent off-beat hi-hats.",
+                        "Kick: Powerful, Snare: Sharp, Hats: Consistent", "Repetitive synth loops, industrial sounds, heavy bass."),
+                    createPattern("Industrial", [1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        "A harsh, percussive beat often featuring distorted sounds and a driving, mechanical rhythm.",
+                        "Kick: Distorted, Snare: Gritty, Hats: Sharp", "Noise textures, metallic percussion, dark synths."),
+                    createPattern("Minimal", [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0], [0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        "Sparse and hypnotic, focusing on subtle rhythmic shifts and repetitive patterns.",
+                        "Kick: Subdued, Snare: Very sparse, Hats: Minimal, precise", "Subtle synth textures, repetitive melodic fragments."),
+                    createPattern("Daft Punk French House", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Funky and groovy, often utilizing sampled disco breaks with a four-on-the-floor kick and prominent hi-hats.",
+                        "Kick: Driving, Snare: Funky, Hats: Consistent, slightly swung", "Filtered samples, vocoders, funky basslines."),
+                    createPattern("Detroit Techno Pulse", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        "Hypnotic and soulful, often with a driving kick and subtle, evolving percussion.",
+                        "Kick: Steady, Snare: Absent or very sparse, Hats: Driving, subtle", "Melodic synths, atmospheric pads, repetitive motifs."),
+                ],
+                "Reggae": [
+                    createPattern("One Drop", [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0], emptyPattern,
+                        "The signature Reggae rhythm, emphasizing the snare and kick on beat 3 (or 2 and 4 in half-time feel).",
+                        "Kick: Off-beat, Snare: Prominent, Hats: Consistent", "Skank guitar, bassline, soulful vocals."),
+                    createPattern("Steppers", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A driving, four-on-the-floor kick pattern, often used in dub and more uptempo reggae.",
+                        "Kick: Driving, Snare: Sparse, Claps: Prominent", "Dub bass, echo effects, melodic instruments."),
+                    createPattern("Rockers", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A more complex and driving reggae beat, often with syncopated kicks and snares.",
+                        "Kick: Syncopated, Snare: Punchy, Hats: Consistent", "Horn sections, organ, driving basslines."),
+                    createPattern("Bob Marley Style", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0], emptyPattern,
+                        "A classic one-drop variation with a laid-back, infectious groove, characteristic of Bob Marley's sound.",
+                        "Kick: Subtle, Snare: Prominent, Hats: Laid-back, consistent", "Skank guitar, prominent bass, soulful vocals."),
+                    createPattern("Shabba Ranks Dancehall", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Aggressive and driving, with a strong emphasis on the kick and snare, typical of early dancehall.",
+                        "Kick: Heavy, Snare: Sharp, Claps: Punchy", "Digital synths, vocal shouts, heavy basslines."),
+                    createPattern("Barrington Levy Rub-a-Dub", [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A sparse, heavy, and hypnotic beat with a deep bass emphasis, characteristic of Rub-a-Dub style.",
+                        "Kick: Deep, Snare: Loud, Hats: Minimal", "Heavy bass, echo effects, melodic vocals."),
+                    createPattern("Roots Reggae Skank", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0], emptyPattern,
+                        "A classic, laid-back roots reggae feel with a strong one-drop and prominent skank guitar rhythm.",
+                        "Kick: Subtle, Snare: Emphasized, Hats: Consistent", "Skank guitar, prominent bass, organ."),
+                    createPattern("Dub Reggae Echo", [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Sparse and atmospheric, focusing on the echo and delay effects on drums, characteristic of dub.",
+                        "Kick: Deep, Snare: Delayed, Hats: Very sparse", "Heavy bass, siren effects, spacious reverbs."),
+                    createPattern("Dancehall Bounce", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "An energetic and danceable rhythm with a prominent kick and snare, often with a driving feel.",
+                        "Kick: Driving, Snare: Sharp, Claps: Accented", "Digital synths, vocal shouts, heavy basslines."),
+                    createPattern("Ska Upbeat", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Fast and upbeat, with a strong emphasis on the off-beat guitar skank and a driving rhythm.",
+                        "Kick: Consistent, Snare: Punchy, Hats: Off-beat", "Upbeat guitar skank, walking bass, horns."),
+                    createPattern("Lovers Rock Smooth", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A smooth, romantic reggae style with a gentle one-drop and lush instrumentation.",
+                        "Kick: Soft, Snare: Laid-back, Hats: Smooth", "Smooth vocals, gentle guitar, warm keys."),
+                    createPattern("Reggae Pop Fusion", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Blends reggae rhythms with pop sensibilities, often featuring a driving kick and catchy melodies.",
+                        "Kick: Driving, Snare: Pop-oriented, Hats: Consistent", "Catchy synths, vocal hooks, danceable basslines."),
+                    createPattern("Digital Dancehall", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Characterized by digital drum machine sounds, often with a driving, minimalist feel.",
+                        "Kick: Electronic, Snare: Digital, Claps: Sharp", "Digital synths, vocal effects, heavy sub-bass."),
+                ],
+                "Reggaeton": [
+                    createPattern("Classic Dembow", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,0,1,0,0,1,0,0,0,0,1,0,0,1,0,0], emptyPattern, emptyPattern, emptyPattern,
+                        "The foundational Reggaeton rhythm, characterized by its distinctive kick-snare pattern.",
+                        "Kick: Punchy, Snare: Off-beat, Hats: Absent or sparse", "Catchy synth melodies, vocal chants, heavy bass."),
+                    createPattern("Modern Dembow", [1,0,0,0,1,0,1,0,1,0,0,0,1,0,1,0], [0,0,1,0,0,1,0,0,0,0,1,0,0,1,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "An evolved Dembow, often with more intricate hi-hats and a driving, danceable feel.",
+                        "Kick: Driving, Snare: Off-beat, Hats: Consistent", "Bright synths, vocal hooks, energetic basslines."),
+                    createPattern("Bad Bunny Trapeton", [1,0,0,0,1,0,1,0,1,0,0,0,1,0,1,0], [0,0,1,0,0,1,0,0,0,0,1,0,0,1,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "Blends the Dembow rhythm with Trap elements like heavy 808s and subtle hi-hat rolls.",
+                        "Kick: Heavy, Snare: Off-beat, Hats: Sparse, subtle rolls", "Deep 808s, atmospheric synths, melodic vocal lines."),
+                ],
+                "Afrobeats": [
+                    createPattern("Modern Afro", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,0,0,1,0,1,0,1,0,0,0,1,0], emptyPattern,
+                        "A contemporary Afrobeats groove with a driving kick and snare, often with subtle percussive elements.",
+                        "Kick: Driving, Snare: Crisp, Hats: Varied", "Guitar riffs, melodic synths, vocal harmonies."),
+                    createPattern("Banku Music", [1,0,0,0,1,0,0,1,0,0,0,0,1,0,0,1], [0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0], emptyPattern, [1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1], emptyPattern,
+                        "Characterized by its mid-tempo, often sparse, and highly percussive groove with a distinct bounce.",
+                        "Kick: Boomy, Snare: Off-beat, Hats: Syncopated", "Minimalist synths, vocal ad-libs, prominent bass."),
+                    createPattern("Tems Afro-Soul", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A soulful and laid-back Afrobeats groove, often with a subtle swing and atmospheric elements.",
+                        "Kick: Soft, Snare: Laid-back, Hats: Smooth", "Warm pads, ethereal vocals, subtle percussion."),
+                    createPattern("Tyla Amapiano Influence", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Combines Afrobeats with Amapiano's signature log drum bassline and syncopated percussion.",
+                        "Kick: Deep, Snare: Crisp, Hats: Syncopated, driving", "Log drums, deep bass, soulful vocal samples."),
+                    createPattern("Burna Boy Afrobeats", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A smooth, mid-tempo Afrobeats groove with a strong, consistent kick and snare, characteristic of Burna Boy's sound.",
+                        "Kick: Solid, Snare: Clean, Hats: Consistent", "Guitar riffs, melodic synths, smooth vocals."),
+                    createPattern("Rema Calm Down", [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "A laid-back yet infectious groove with a focus on melodic elements and subtle percussive details, inspired by Rema.",
+                        "Kick: Soft, Snare: Gentle, Hats: Sparse, precise", "Melodic synths, atmospheric pads, smooth vocal delivery."),
+                    createPattern("Wizkid Essence Groove", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A smooth, sensual Afrobeats rhythm with a focus on intricate hi-hats and a deep pocket.",
+                        "Kick: Warm, Snare: Laid-back, Hats: Intricate, smooth", "Ethereal pads, soulful vocals, subtle percussion."),
+                    createPattern("Davido Unavailable", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "An energetic and danceable Afrobeats rhythm with a driving kick and prominent snare.",
+                        "Kick: Driving, Snare: Punchy, Hats: Consistent", "Catchy synth melodies, vocal chants, strong basslines."),
+                    createPattern("Ayra Starr Rush", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A vibrant and energetic Afrobeats rhythm with a driving feel and catchy percussive elements.",
+                        "Kick: Energetic, Snare: Crisp, Hats: Lively", "Bright synths, vocal hooks, danceable melodies."),
+                    createPattern("Fireboy DML Peru", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "A smooth and melodic Afrobeats groove with a relaxed yet infectious rhythm.",
+                        "Kick: Warm, Snare: Laid-back, Hats: Subtle, consistent", "Acoustic guitar, melodic synths, smooth vocals."),
+                    createPattern("Asake Amapiano", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A driving Amapiano rhythm with a signature log drum bassline and syncopated percussion.",
+                        "Kick: Deep, Snare: Crisp, Hats: Syncopated, driving", "Log drums, deep bass, soulful vocal samples."),
+                    createPattern("Omah Lay Soso", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A melancholic yet groovy Afrobeats rhythm with a focus on emotional depth and subtle percussive elements.",
+                        "Kick: Soft, Snare: Laid-back, Hats: Smooth", "Atmospheric pads, emotional vocals, subtle bass."),
+                    createPattern("CKay Love Nwantiti", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "A smooth and infectious Afrobeats rhythm with a relaxed yet danceable feel.",
+                        "Kick: Warm, Snare: Crisp, Hats: Consistent", "Melodic guitar, smooth synths, catchy vocal hooks."),
+                ],
+                "Salsa": [
+                    createPattern("Tumbao", [0,0,0,1,0,0,1,0,0,0,0,1,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        "A foundational Afro-Cuban rhythm, characterized by its syncopated kick and snare pattern.",
+                        "Kick: Syncopated, Snare: Off-beat, Hats: Consistent", "Latin percussion, brass, piano montunos."),
+                    createPattern("3-2 Son Clave", emptyPattern, emptyPattern, [1,0,0,1,0,0,0,1,0,0,0,0,1,0,1,0], emptyPattern, emptyPattern,
+                        "The rhythmic backbone of many Salsa songs, providing a distinctive syncopated feel.",
+                        "Kick: Absent or very sparse, Snare: Absent or very sparse, Claps: Primary rhythm", "Percussion, brass, piano."),
+                ],
+                "Soul": [
+                    createPattern("Motown Classic", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A driving, upbeat soul groove with a strong backbeat and consistent hi-hats.",
+                        "Kick: Solid, Snare: Loud, Claps: Prominent", "Organ, bass, guitar, powerful vocals."),
+                    createPattern("Stax Groove", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Raw, gritty, and often simple yet incredibly effective, with a focus on the pocket.",
+                        "Kick: Punchy, Snare: Sharp, Hats: Consistent", "Bluesy guitar, Hammond organ, soulful vocals."),
+                    createPattern("Neo-Soul Pocket", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,1,0,1,0,1,1,0,1,1,0,1,0,1], emptyPattern,
+                        "Smooth and intricate, often featuring subtle ghost notes and a laid-back, humanized feel.",
+                        "Kick: Soft, Snare: Ghosted, Hats: Swung, detailed", "Rhodes, vocal harmonies, smooth basslines."),
+                    createPattern("Philly Soul", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Lush and orchestral, often with a driving four-on-the-floor kick and prominent claps.",
+                        "Kick: Driving, Snare: Loud, Claps: Prominent", "Strings, horns, vibraphone, smooth vocal harmonies."),
+                ],
+                "Lo-Fi Hip Hop": [
+                    createPattern("Lazy Swing", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,1,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,1,0,1,0,1,1,0,1,1,0,1,0,1], emptyPattern,
+                        "A relaxed, slightly imperfect swing feel, often with subtle ghost notes and a dusty texture.",
+                        "Kick: Soft, Snare: Laid-back, Hats: Loose, swung", "Vinyl crackle, warm piano, mellow bass."),
+                    createPattern("Tape Hiss", [1,0,0,0,0,1,0,0,1,0,0,0,0,1,0,0], [0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,0,1,1,0,1,1,0], emptyPattern,
+                        "Characterized by a slightly degraded, warm sound, often with subtle off-grid elements.",
+                        "Kick: Thumpy, Snare: Muted, Hats: Subtle, slightly off", "Distorted samples, tape saturation, warm synths."),
+                ],
+                "Jazz": [
+                    createPattern("Swing Ride", [1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1], [0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0], emptyPattern, [1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1], emptyPattern,
+                        "The quintessential jazz swing rhythm, driven by the ride cymbal, with a walking bass feel.",
+                        "Kick: Feathered, Snare: Ghosted, Hats: Swung ride", "Walking bass, piano chords, saxophone melodies."),
+                    createPattern("Bossa Nova", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,0,1,0,0,1,0,0,0,0,1,0,0,1,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A smooth, Brazilian-influenced rhythm with a characteristic syncopated snare and consistent hi-hats.",
+                        "Kick: Soft, Snare: Syncopated, Hats: Consistent, light", "Acoustic guitar, flute, gentle vocals, upright bass."),
+                    createPattern("Miles Davis Cool Jazz", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "Subtle and understated, with a focus on space and delicate rhythmic interplay.",
+                        "Kick: Sparse, Snare: Soft, Hats: Light, airy", "Trumpet, piano, upright bass, brushed drums."),
+                    createPattern("Charlie Mingus Swing", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], emptyPattern,
+                        "Energetic and often complex, reflecting Mingus's dynamic and avant-garde approach to jazz.",
+                        "Kick: Driving, Snare: Punchy, Hats: Irregular, dynamic", "Upright bass, piano, saxophone, strong improvisation."),
+                    createPattern("Jazz Fusion Shuffle", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Blends jazz improvisation with rock and funk rhythms, often featuring a driving, complex feel.",
+                        "Kick: Varied, Snare: Sharp, Hats: Intricate, driving", "Electric guitar, synth leads, complex basslines."),
+                ],
+                "Ambient": [
+                    createPattern("Heartbeat", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], emptyPattern, emptyPattern, emptyPattern, emptyPattern,
+                        "A slow, pulsating rhythm mimicking a heartbeat, creating a calm and introspective atmosphere.",
+                        "Kick: Soft, Snare: Absent, Hats: Absent", "Long pads, ethereal drones, subtle textures."),
+                    createPattern("Minimal Pulse", [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], emptyPattern, emptyPattern, [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern,
+                        "A very sparse beat with a subtle, repetitive pulse, designed to blend into the background.",
+                        "Kick: Very soft, Snare: Absent, Hats: Very sparse", "Evolving textures, drones, field recordings."),
+                    createPattern("Sparse Texture", [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0], emptyPattern, emptyPattern, [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "Focuses on irregular, almost random percussive hits to add subtle rhythmic texture.",
+                        "Kick: Irregular, Snare: Sparse, Hats: Accented, airy", "Washed-out pads, shimmering effects, distant sounds."),
+                    createPattern("Evolving Ambient", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], emptyPattern, emptyPattern, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A very slow, evolving rhythm with sparse, long-decaying hits, creating a sense of vastness.",
+                        "Kick: Very long decay, Snare: Absent, Hats: Very sparse, long decay", "Slow pads, evolving textures, drones."),
+                    createPattern("Subtle Rhythmic Drone", [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], emptyPattern, emptyPattern, [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern,
+                        "A nearly imperceptible rhythmic layer, providing a subtle pulse beneath atmospheric sounds.",
+                        "Kick: Absent, Snare: Absent, Hats: Very subtle, consistent", "Drones, evolving soundscapes, field recordings."),
+                ],
+                "Drum Fills & Breaks": [
+                    createPattern("16th Note Snare Roll", emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern, emptyPattern, emptyPattern,
+                        "A continuous roll of 16th notes on the snare, perfect for building tension or transitioning.",
+                        "Snare: Consistent, high", "Any genre requiring a drum roll or build-up."),
+                    createPattern("16th Note Kick Roll", [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern, emptyPattern, emptyPattern, emptyPattern,
+                        "A rapid-fire succession of 16th notes on the kick drum, ideal for aggressive fills or build-ups.",
+                        "Kick: Consistent, high", "Trap, Metal, Electronic, any genre needing intense fills."),
+                    createPattern("Classic Breakbeat", [1,0,1,0,0,0,1,0,1,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1], emptyPattern,
+                        "A raw, sampled-sounding breakbeat with a driving, slightly swung feel.",
+                        "Kick: Punchy, Snare: Crisp, Hats: Varied, open/closed", "Chopped samples, gritty bass, classic hip-hop elements."),
+                    createPattern("Build-up Fill", [1,0,0,0,1,0,0,0,1,1,0,0,1,1,1,1], [0,0,1,0,0,0,1,0,0,0,1,1,0,0,1,1], emptyPattern, emptyPattern, emptyPattern,
+                        "A dynamic fill designed to build energy, typically leading into a chorus or new section.",
+                        "Kick: Increasing density, Snare: Increasing density, Hats: Fast", "Any genre needing a dynamic transition."),
+                    createPattern("Snare Flam Roll", emptyPattern, [1,0,1,0,0,1,0,0,1,0,1,0,0,1,0,0], emptyPattern, emptyPattern, emptyPattern,
+                        "A quick, double-hit snare pattern that adds a 'flam' effect, often used in fills.",
+                        "Snare: Double hits, quick succession", "Rock, Funk, Hip Hop fills."),
+                    createPattern("Kick-Snare Combo Fill", [1,1,0,0,1,0,1,0,1,1,0,0,1,0,1,0], [0,0,1,0,0,1,0,1,0,0,1,0,0,1,0,1], emptyPattern, emptyPattern, emptyPattern,
+                        "An energetic fill combining rapid kicks and snares for a powerful impact.",
+                        "Kick: Fast, Snare: Fast, interlocked", "High-energy genres, transitions."),
+                    createPattern("Hi-Hat Burst Fill", emptyPattern, emptyPattern, emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        "A rapid burst of closed hi-hats, often used for quick, percussive accents.",
+                        "Hats: Very fast, consistent", "Electronic, Trap, Hip Hop accents."),
+                    createPattern("Open Hat Swell", emptyPattern, emptyPattern, emptyPattern, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                        "A simple, effective fill using an open hi-hat to create a swelling, atmospheric effect.",
+                        "Open Hat: Long decay, prominent", "Ambient, Lo-Fi, R&B transitions."),
+                    createPattern("Tom Roll Up", [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], emptyPattern, emptyPattern, emptyPattern,
+                        "A classic drum fill simulating a roll across toms, building momentum.",
+                        "Kick: Varied, Snare: Varied, Hats: Sparse", "Rock, Funk, Jazz fills."),
+                    createPattern("Percussive Build", [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern, emptyPattern,
+                        "A rhythmic build-up using claps and other percussive elements to create tension.",
+                        "Claps: Increasing density, Hats: Sparse", "Electronic, Pop, Dance music build-ups."),
+                ],
+                "Percussion": [
+                    createPattern("Latin Conga Groove", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0], [0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], emptyPattern,
+                        "A lively, syncopated groove mimicking conga patterns, adding rhythmic complexity.",
+                        "Kick: Varied, Snare: Off-beat, Hats: Lively", "Latin instruments, brass, melodic lines."),
+                    createPattern("Afro-Cuban Rhythm", [1,0,0,0,0,1,0,0,1,0,0,0,0,1,0,0], [0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], emptyPattern,
+                        "Complex and polyrhythmic, with interlocking patterns that create a rich, dense groove.",
+                        "Kick: Syncopated, Snare: Complex, Hats: Intricate", "World instruments, vocal chants, driving basslines."),
+                    createPattern("Electronic Percussion", [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A modern, digital-sounding percussive loop, often sparse but impactful.",
+                        "Kick: Minimal, Snare: Sparse, Claps: Accented", "Digital synths, atmospheric pads, subtle effects."),
+                    createPattern("Shaker & Tambourine", emptyPattern, emptyPattern, emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                        "A light, rhythmic pattern dominated by the sounds of shakers and tambourines, adding texture.",
+                        "Hats (as shakers): Light, consistent, Open Hats (as tambourine): Accented", "Acoustic instruments, soft vocals, laid-back grooves."),
+                    createPattern("Tabla Inspired", [1,0,0,1,0,0,0,1,0,0,1,0,0,0,0,1], [0,0,1,0,0,1,0,0,0,1,0,0,1,0,1,0], emptyPattern, emptyPattern, emptyPattern,
+                        "Features intricate and rapid percussive patterns inspired by Indian tabla drumming.",
+                        "Kick: Fast, varied, Snare: Fast, varied, Hats: Absent or very sparse", "World instruments, drones, melodic loops."),
+                    createPattern("World Percussion Loop", [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,0,1,0,0,0,1,0,0,0,0,1,0,0,0,1], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], emptyPattern,
+                        "A diverse percussive loop blending various world rhythms into a cohesive groove.",
+                        "Kick: Varied, Snare: Syncopated, Hats: Layered", "Ethnic instruments, atmospheric pads, vocal chants."),
+                ],
+                "Breakbeats": [
+                    createPattern("Amen Break (Simplified)", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A foundational breakbeat, known for its raw, driving energy and widespread use in Hip Hop and electronic music.",
+                        "Kick: Punchy, Snare: Loud, Hats: Consistent, driving", "Chopped samples, gritty bass, classic hip-hop/jungle elements."),
+                    createPattern("Funky Drummer Break", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,1,0,0,1,1,0,1,0,1,0,0,1,1,0,1], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "An iconic, highly syncopated breakbeat with a signature ghost note snare and intricate hi-hats.",
+                        "Kick: Varied, Snare: Ghosted, Hats: Swung, intricate", "Funky guitar, soulful samples, prominent bass."),
+                    createPattern("Think Break", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A driving, slightly off-kilter breakbeat with a distinctive snare pattern, popular in drum & bass.",
+                        "Kick: Punchy, Snare: Syncopated, Hats: Consistent", "Fast basslines, atmospheric pads, energetic synths."),
+                    createPattern("Apache Break", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A classic, driving breakbeat with a strong, consistent rhythm and a prominent open hi-hat.",
+                        "Kick: Driving, Snare: Loud, Hats: Open, consistent", "Orchestral stabs, funky guitar, powerful basslines."),
+                    createPattern("Soul Pride Break", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], emptyPattern,
+                        "A smooth, soulful breakbeat with a laid-back feel and subtle rhythmic variations.",
+                        "Kick: Warm, Snare: Laid-back, Hats: Swung", "Soul samples, Rhodes piano, smooth bass."),
+                    createPattern("James Brown Funky Drummer", [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0], [0,1,0,0,1,1,0,1,0,1,0,0,1,1,0,1], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "The legendary breakbeat, known for its raw, driving funk and intricate ghost notes.",
+                        "Kick: Varied, Snare: Ghosted, Hats: Intricate, loose", "Funky guitar, prominent bass, soulful vocals."),
+                    createPattern("James Stubblefield Groove", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A tight, consistent groove with a strong pocket, often used as a foundational break.",
+                        "Kick: Solid, Snare: Crisp, Hats: Consistent", "Soul samples, warm synths, driving basslines."),
+                ],
+                "Electronic": [
+                    createPattern("Diplo Moombahton", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0], [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], emptyPattern,
+                        "A fusion of house and reggaeton, characterized by a half-time feel and a driving, syncopated rhythm.",
+                        "Kick: Heavy, Snare: Sparse, Claps: Prominent", "Tropical percussion, synth leads, vocal chops."),
+                    createPattern("DJ Aoki Festival Trap", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "High-energy and aggressive, designed for large crowds, with heavy drops and driving rhythms.",
+                        "Kick: Powerful, Snare: Loud, Hats: Fast, energetic", "Distorted synths, huge bass drops, vocal chants."),
+                    createPattern("Future Bass Beat", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "Characterized by a melodic, often half-time feel, with intricate hi-hats and a warm, synth-driven sound.",
+                        "Kick: Soft, Snare: Punchy, Hats: Detailed, airy", "Wobbly synths, vocal chops, lush pads."),
+                    createPattern("Trance Driving", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A relentless, uplifting beat with a driving four-on-the-floor kick and consistent hi-hats.",
+                        "Kick: Driving, Snare: Absent or very sparse, Claps: Prominent", "Arpeggiated synths, soaring melodies, atmospheric pads."),
+                ],
+                "Radio Hits": [
+                    createPattern("Burna Boy Afrobeats", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A smooth, mid-tempo Afrobeats groove with a strong, consistent kick and snare, characteristic of Burna Boy's sound.",
+                        "Kick: Solid, Snare: Clean, Hats: Consistent", "Guitar riffs, melodic synths, smooth vocals."),
+                    createPattern("Rema Calm Down", [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "A laid-back yet infectious groove with a focus on melodic elements and subtle percussive details, inspired by Rema.",
+                        "Kick: Soft, Snare: Gentle, Hats: Sparse, precise", "Melodic synths, atmospheric pads, smooth vocal delivery."),
+                    createPattern("Cardi B Pop Trap", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Blends pop structure with trap drums, often featuring a driving kick and catchy snare patterns, inspired by Cardi B.",
+                        "Kick: Driving, Snare: Pop-oriented, Hats: Steady", "Catchy synth melodies, strong vocal presence, danceable basslines."),
+                    createPattern("Jack Harlow Smooth Hip Hop", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "A smooth, confident beat with a relaxed feel, often featuring subtle swing and prominent bass, inspired by Jack Harlow.",
+                        "Kick: Boomy, Snare: Laid-back, Hats: Consistent", "Smooth samples, mellow synths, strong vocal presence."),
+                    createPattern("SZA Modern R&B", [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "Often sparse and atmospheric, with a focus on groove and emotional depth rather than overt complexity, inspired by SZA.",
+                        "Kick: Subdued, Snare: Laid-back, Hats: Loose, airy", "Atmospheric pads, ethereal vocals, subtle bass."),
+                    createPattern("Brent Faiyaz Ethereal", [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A laid-back, atmospheric R&B groove with sparse, impactful drums, inspired by Brent Faiyaz.",
+                        "Kick: Soft, Snare: Prominent, Hats: Sparse, airy", "Ethereal synths, reverb-drenched vocals, smooth bass."),
+                    createPattern("Summer Walker Vulnerable", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A slow, emotional R&B beat with a strong backbeat and subtle percussive elements, inspired by Summer Walker.",
+                        "Kick: Soft, Snare: Gentle, Hats: Sparse", "Warm pads, emotional vocals, subtle bass."),
+                    createPattern("Jorja Smith Jazzy Neo-Soul", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,1,0,1,0,1,1,0,1,1,0,1,0,1], emptyPattern,
+                        "A smooth, jazzy R&B groove with a sophisticated feel and intricate hi-hats, inspired by Jorja Smith.",
+                        "Kick: Warm, Snare: Snappy, Hats: Detailed, swung", "Jazz samples, Rhodes, soulful vocals."),
+                    createPattern("Giveon Melancholic R&B", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A sparse, emotional R&B beat with a focus on deep kicks and prominent snares, inspired by Giveon.",
+                        "Kick: Deep, Snare: Loud, Hats: Very sparse", "Piano, strings, emotional vocals."),
+                    createPattern("H.E.R. Soulful Groove", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "An organic, live-sounding R&B groove with a strong pocket and subtle variations, inspired by H.E.R.",
+                        "Kick: Warm, Snare: Dynamic, Hats: Natural", "Live instruments, soulful vocals, smooth bass."),
+                    createPattern("Kehlani Contemporary R&B", [1,0,0,0,0,1,0,0,1,0,0,0,0,1,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,0,1,1,1,1,0,1,1,0,1,1], emptyPattern,
+                        "A polished, modern R&B beat with a clean sound and subtle syncopation, inspired by Kehlani.",
+                        "Kick: Clean, Snare: Crisp, Hats: Precise", "Digital synths, smooth vocal layers, clean bass."),
+                    createPattern("Daniel Caesar Neo-Soul", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,1,0,1,0,1,1,0,1,1,0,1,0,1], emptyPattern,
+                        "A smooth, soulful groove with a laid-back feel and intricate hi-hats, inspired by Daniel Caesar.",
+                        "Kick: Soft, Snare: Snappy, Hats: Detailed, swung", "Rhodes, vocal harmonies, smooth basslines."),
+                    createPattern("The Weeknd Pop R&B", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A driving, synth-heavy pop R&B beat with a consistent four-on-the-floor kick, inspired by The Weeknd.",
+                        "Kick: Driving, Snare: Pop-oriented, Hats: Steady", "Dark synths, powerful vocals, danceable basslines."),
+                ],
+                "Midwest": [
+                    createPattern("Chicago Juke/Footwork", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        "Extremely fast and syncopated, designed for rapid footwork dancing, with complex drum machine patterns.",
+                        "Kick: Fast, Snare: Rapid, Claps: Off-beat, Hats: Very fast, intricate", "Minimalist synths, vocal chops, heavy sub-bass."),
+                    createPattern("Detroit Ghetto Tech", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        "Raw, driving, and often sexually explicit, blending techno with hip-hop and electro elements.",
+                        "Kick: Driving, Snare: Raw, Hats: Consistent, sharp", "Minimal synths, vocal shouts, heavy bass."),
+                    createPattern("St. Louis Bounce", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A bouncy, often swung hip-hop beat with a distinctive rhythmic feel, popular in the Midwest.",
+                        "Kick: Boomy, Snare: Laid-back, Hats: Swung", "Catchy synth melodies, vocal ad-libs, prominent bass."),
+                    createPattern("Cleveland Drill", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "A hard-hitting, aggressive drill beat with a focus on dark atmospheres and impactful drums.",
+                        "Kick: Heavy, Snare: Sharp, Hats: Sparse, sharp", "Dark synths, eerie melodies, distorted vocals."),
+                    createPattern("Minneapolis Abstract", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], emptyPattern,
+                        "Experimental and often glitchy, with irregular patterns and unique sound design.",
+                        "Kick: Varied, Snare: Glitchy, Hats: Irregular", "Abstract synths, experimental samples, complex textures."),
+                    createPattern("Chicago Bop", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A dance-oriented Hip Hop beat with a driving rhythm and a strong emphasis on the bounce.",
+                        "Kick: Punchy, Snare: Crisp, Hats: Consistent", "Energetic synths, vocal chants, danceable basslines."),
+                    createPattern("Detroit Hip Hop", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Often features a gritty, soulful feel with a strong boom-bap influence and prominent samples.",
+                        "Kick: Solid, Snare: Sharp, Hats: Laid-back", "Soul samples, dark synths, strong basslines."),
+                    createPattern("Kansas City Trap", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "A regional trap sound with heavy 808s and a slightly more laid-back, yet impactful, groove.",
+                        "Kick: Heavy 808, Snare: Crisp, Hats: Fast, subtle rolls", "Deep sub-bass, melodic loops, vocal ad-libs."),
+                    createPattern("Milwaukee Drill", [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "Aggressive and dark, with a focus on hard-hitting drums and menacing atmospheres.",
+                        "Kick: Punchy, Snare: Loud, Hats: Sparse, sharp", "Dark synths, eerie melodies, aggressive vocals."),
+                    createPattern("Ohio Trap", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                        "A diverse trap sound, often blending traditional trap elements with unique melodic and percussive ideas.",
+                        "Kick: Varied, Snare: Sharp, Hats: Energetic", "Melodic synths, vocal effects, driving basslines."),
+                    createPattern("Indianapolis Bounce", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],
+                        "A lively, danceable beat with a strong bounce and often syncopated rhythms.",
+                        "Kick: Boomy, Snare: Crisp, Hats: Lively", "Catchy synth melodies, vocal chants, danceable basslines."),
+                    createPattern("Michigan Electronic", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1], emptyPattern,
+                        "Influenced by Detroit techno and house, often featuring driving four-on-the-floor kicks and repetitive patterns.",
+                        "Kick: Driving, Snare: Absent or sparse, Claps: Prominent", "Minimal synths, repetitive loops, atmospheric pads."),
+                    createPattern("Twin Cities Hip Hop", [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], emptyPattern,
+                        "Often features a more experimental or alternative hip-hop sound, with varied drum patterns.",
+                        "Kick: Varied, Snare: Dynamic, Hats: Loose", "Abstract samples, unconventional melodies, thoughtful lyrics."),
+                    createPattern("Chicago House Influence", [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "Blends hip-hop with classic Chicago house elements, featuring a driving four-on-the-floor kick.",
+                        "Kick: Driving, Snare: Crisp, Hats: Off-beat", "House chords, soulful vocals, deep basslines."),
+                    createPattern("Midwest G-Funk", [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], emptyPattern, [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+                        "A laid-back, funky groove with prominent 808s and a distinct Midwest bounce.",
+                        "Kick: Deep, Snare: Crisp, Hats: Laid-back", "Whiny synths, funky basslines, soulful samples."),
+                ]
+            };
+
+            // --- Functions ---
+            const initAudio = async () => {
+                if (audioReady) return;
+                await Tone.start();
+                audioReady = true;
+                console.log('Audio Context is ready.');
+            };
+            document.documentElement.addEventListener('mousedown', initAudio, { once: true });
+            document.documentElement.addEventListener('touchstart', initAudio, { once: true });
+
+            const stopPlayback = () => {
+                if (currentSequence) {
+                    currentSequence.stop(0);
+                    currentSequence.dispose();
+                    currentSequence = null;
+                }
+                Tone.Transport.stop();
+                Tone.Transport.position = 0; // Reset transport position
+                isPlaying = false;
+                playIcon.classList.remove('hidden');
+                stopIcon.classList.add('hidden');
+                document.querySelectorAll('.grid-cell.playing, .step-number.playing').forEach(el => el.classList.remove('playing'));
+            };
+
+            const startPlayback = () => {
+                if (!selectedPattern || !audioReady) return;
+                stopPlayback(); // Stop any existing playback before starting a new one
+                const sequenceSteps = Array.from({ length: 16 }, (_, i) => i);
+
+                currentSequence = new Tone.Sequence((time, step) => {
+                    // Play notes based on the selected pattern for each instrument
+                    if (selectedPattern.kick[step]) instruments.kick.triggerAttackRelease('C1', '8n', time);
+                    if (selectedPattern.snare[step]) instruments.snare.triggerAttackRelease('8n', time);
+                    if (selectedPattern.clap[step]) instruments.clap.triggerAttackRelease('16n', time);
+                    if (selectedPattern.closedHat[step]) instruments.closedHat.triggerAttackRelease('16n', time);
+                    if (selectedPattern.openHat[step]) instruments.openHat.triggerAttackRelease('8n', time);
+                    
+                    // Schedule visual update for the playhead
+                    Tone.Draw.schedule(() => updatePlayhead(step), time);
+                }, sequenceSteps, '16n').start(0);
+
+                Tone.Transport.start(); // Start Tone.js transport
+                isPlaying = true;
+                playIcon.classList.add('hidden'); // Show stop icon
+                stopIcon.classList.remove('hidden'); // Hide play icon
+            };
+
+            const updatePlayhead = (step) => {
+                // Remove 'playing' class from all cells and step numbers
+                document.querySelectorAll('.grid-cell.playing, .step-number.playing').forEach(el => el.classList.remove('playing'));
+                
+                // Add 'playing' class to the current step number in the header
+                const stepHeader = gridContainer.querySelector('.step-header');
+                if(stepHeader && stepHeader.children[step + 1]) {
+                    stepHeader.children[step + 1].classList.add('playing');
+                }
+
+                // Add 'playing' class to the cells in the current step column for each instrument row
+                const instrumentRows = gridContainer.querySelectorAll('.instrument-row');
+                instrumentRows.forEach(row => {
+                    if(row.children[step + 1]) {
+                        row.children[step + 1].classList.add('playing');
+                    }
+                });
+            };
+
+            const renderPatternGrid = (pattern) => {
+                gridContainer.innerHTML = ''; // Clear existing grid
+                if (!pattern) return;
+
+                // Create step numbers header row
+                const stepHeader = document.createElement('div');
+                stepHeader.className = 'step-header flex items-center gap-1';
+                const emptyLabel = document.createElement('div');
+                emptyLabel.className = 'w-28 flex-shrink-0 text-sm font-semibold text-gray-400 pr-2 text-right';
+                stepHeader.appendChild(emptyLabel);
+                for (let i = 1; i <= 16; i++) {
+                    const numberCell = document.createElement('div');
+                    numberCell.className = 'step-number flex-1 h-6 rounded-sm flex items-center justify-center text-xs text-gray-500';
+                    numberCell.textContent = i;
+                    stepHeader.appendChild(numberCell);
+                }
+                gridContainer.appendChild(stepHeader);
+
+                // Define instrument order and their display labels
+                const instrumentOrder = ['kick', 'snare', 'clap', 'closedHat', 'openHat'];
+                const instrumentLabels = { kick: 'Kick', snare: 'Snare', clap: 'Clap', closedHat: 'Hi-Hat (C)', openHat: 'Hi-Hat (O)' };
+
+                // Create a row for each instrument
+                instrumentOrder.forEach(instrumentKey => {
+                    const instrumentPattern = pattern[instrumentKey];
+                    // Ensure the pattern array exists and is valid, otherwise use an empty pattern
+                    const currentInstrumentPattern = Array.isArray(instrumentPattern) ? instrumentPattern : [...emptyPattern];
+
+                    const row = document.createElement('div');
+                    row.className = 'instrument-row flex items-center gap-1';
+                    
+                    const label = document.createElement('div');
+                    label.className = 'w-28 flex-shrink-0 text-sm font-semibold text-gray-400 pr-2 text-right';
+                    label.textContent = instrumentLabels[instrumentKey];
+                    row.appendChild(label);
+
+                    // Create 16 cells for each instrument row
+                    for (let i = 0; i < 16; i++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'grid-cell flex-1 h-6 sm:h-8 rounded-sm';
+                        
+                        // Apply alternating background for beat readability (every 4 steps)
+                        if (i % 4 === 0) {
+                           cell.classList.add('alt-bg'); // Add new class for darker background
+                        }
+                        
+                        // Apply 'active' class if the note is present in the pattern
+                        if (currentInstrumentPattern[i] === 1) {
+                            cell.classList.add('active'); // Blue for active notes
+                        }
+
+                        // Add click event listener to toggle note on/off
+                        cell.dataset.instrument = instrumentKey;
+                        cell.dataset.step = i;
+                        cell.addEventListener('click', () => {
+                            if (selectedPattern) {
+                                // Ensure the pattern array exists and is mutable for editing
+                                if (!selectedPattern[instrumentKey]) {
+                                    selectedPattern[instrumentKey] = [...emptyPattern];
+                                }
+                                // Toggle the note state (0 to 1, or 1 to 0)
+                                selectedPattern[instrumentKey][i] = selectedPattern[instrumentKey][i] === 1 ? 0 : 1;
+                                cell.classList.toggle('active'); // Toggle visual class
+                                
+                                // If playback is active, restart the sequence to immediately apply changes
+                                if (isPlaying) {
+                                    startPlayback();
+                                }
+                            }
+                        });
+
+                        row.appendChild(cell);
+                    }
+                    gridContainer.appendChild(row);
+                });
+            };
+
+            const selectPattern = (pattern) => {
+                selectedPattern = pattern;
+                selectedPatternSpan.textContent = pattern.name;
+                renderPatternGrid(pattern); // Render the grid for the newly selected pattern
+                playStopBtn.disabled = false; // Enable play/stop button
+                exportMidiBtn.disabled = false; // Enable export MIDI button
+                
+                // Update pattern details section
+                patternDescription.textContent = pattern.description || 'No description available.';
+                patternVelocityTip.textContent = `Suggested Velocity: ${pattern.suggestedVelocity || 'N/A'}`;
+                patternMainSounds.textContent = `Main Sounds: ${pattern.mainSounds || 'N/A'}`;
+
+                if (isPlaying) {
+                    startPlayback(); // Restart playback with the new pattern if currently playing
+                }
+            };
+
+            const loadPatternsForGenre = (genre) => {
+                patternListContainer.innerHTML = ''; // Clear existing pattern buttons
+                const patterns = drumPatterns[genre] || []; // Get patterns for the selected genre
+                patterns.forEach(pattern => {
+                    const btn = document.createElement('button');
+                    btn.className = 'w-full text-left p-3 rounded-md bg-gray-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1';
+                    btn.textContent = pattern.name;
+                    btn.onclick = () => {
+                        // Remove active styling from previously selected button
+                        const currentActive = patternListContainer.querySelector('.bg-red-600');
+                        if(currentActive) currentActive.classList.replace('bg-red-600', 'bg-gray-700');
+                        // Add active styling to the newly selected button
+                        btn.classList.replace('bg-gray-700', 'bg-red-600');
+                        selectPattern(pattern); // Select and display the pattern
+                    };
+                    patternListContainer.appendChild(btn);
+                });
+                // Automatically select the first pattern if available for the new genre
+                if (patterns.length > 0) {
+                    patternListContainer.firstChild.click();
+                } else {
+                    // If no patterns, disable controls and clear display
+                    selectedPattern = null;
+                    selectedPatternSpan.textContent = 'None';
+                    renderPatternGrid(null);
+                    playStopBtn.disabled = true;
+                    exportMidiBtn.disabled = true;
+                    patternDescription.textContent = 'No pattern selected.';
+                    patternVelocityTip.textContent = '';
+                    patternMainSounds.textContent = '';
+                }
+            };
+
+            const switchGenre = (genre) => {
+                if (currentGenre === genre) return; // Do nothing if already on this genre
+                stopPlayback(); // Stop playback when switching genres
+                currentGenre = genre;
+                currentGenreSpan.textContent = genre; // Update genre display
+                
+                // Update BPM slider and input based on genre's default BPM
+                const newBpm = genreBPMs[genre] || 120;
+                bpmSlider.value = newBpm;
+                bpmInput.value = newBpm;
+                bpmValueSpan.textContent = newBpm;
+                Tone.Transport.bpm.value = newBpm; // Update Tone.js BPM
+                
+                loadPatternsForGenre(genre); // Load and display patterns for the new genre
+            };
+
+            const exportMidi = () => {
+                if (!selectedPattern) return; // Cannot export if no pattern is selected
+                const track = new MidiWriter.Track();
+                track.setTempo(Tone.Transport.bpm.value); // Set MIDI tempo to current BPM
+                // MIDI note mapping for drum instruments (General MIDI Drum Map)
+                const midiMap = { kick: 'C1', snare: 'D1', clap: 'D#1', closedHat: 'F#1', openHat: 'G#1' };
+                const TICKS_PER_16TH_NOTE = 32; // Standard MIDI ticks (128 ticks per quarter note, so 16th note is 128/4 = 32 ticks)
+                
+                Object.keys(midiMap).forEach(instrument => {
+                    const pattern = selectedPattern[instrument];
+                    if(!pattern) return; // Skip if no pattern data for this instrument
+                    const notes = [];
+                    pattern.forEach((hit, index) => {
+                        if (hit) {
+                            notes.push(new MidiWriter.NoteEvent({
+                                pitch: [midiMap[instrument]],
+                                duration: '16', // 16th note duration
+                                startTick: index * TICKS_PER_16TH_NOTE,
+                                velocity: 100 // Default velocity (0-127)
+                            }));
+                        }
+                    });
+                    if (notes.length > 0) {
+                        track.addEvent(notes, () => ({ channel: 10 })); // Add notes to MIDI track, channel 10 is standard for drums
+                    }
+                });
+                const write = new MidiWriter.Writer(track);
+                const dataUri = write.dataUri(); // Get MIDI data as a Data URI
+                const link = document.createElement('a');
+                link.href = dataUri;
+                link.download = `${currentGenre}_${selectedPattern.name.replace(/\s/g, '_')}.mid`; // Set download filename
+                document.body.appendChild(link);
+                link.click(); // Trigger download
+                document.body.removeChild(link); // Clean up the temporary link element
+            };
+
+            const generateRandomPattern = async () => {
+                loadingSpinner.classList.remove('hidden'); // Show loading spinner
+                generatePatternBtn.disabled = true; // Disable buttons during generation
+                playStopBtn.disabled = true;
+                exportMidiBtn.disabled = true;
+                stopPlayback(); // Stop any current playback before generating
+
+                const prompt = `Generate a 16-step drum pattern for the ${currentGenre} genre. The pattern should be in JSON format. The JSON object must have the following keys: 'kick', 'snare', 'clap', 'closedHat', 'openHat'. Each key's value should be an array of 16 integers, where 1 indicates a hit and 0 indicates no hit. Ensure the pattern is musically coherent for ${currentGenre}. Also provide a short description, suggested velocity tips for key instruments, and main sounds to go with the pattern. The JSON object should have these additional keys: 'description', 'suggestedVelocity', 'mainSounds'.`;
+
+                try {
+                    const apiKey = ""; // Canvas will provide this at runtime
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    
+                    const payload = {
+                        contents: [{ role: "user", parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    "kick": { type: "ARRAY", items: { type: "INTEGER" }, minItems: 16, maxItems: 16 },
+                                    "snare": { type: "ARRAY", items: { type: "INTEGER" }, minItems: 16, maxItems: 16 },
+                                    "clap": { type: "ARRAY", items: { type: "INTEGER" }, minItems: 16, maxItems: 16 },
+                                    "closedHat": { type: "ARRAY", items: { type: "INTEGER" }, minItems: 16, maxItems: 16 },
+                                    "openHat": { type: "ARRAY", items: { type: "INTEGER" }, minItems: 16, maxItems: 16 },
+                                    "description": { "type": "STRING" },
+                                    "suggestedVelocity": { "type": "STRING" },
+                                    "mainSounds": { "type": "STRING" }
+                                },
+                                required: ["kick", "snare", "clap", "closedHat", "openHat", "description", "suggestedVelocity", "mainSounds"]
+                            }
+                        }
+                    };
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const jsonText = result.candidates[0].content.parts[0].text;
+                        const generatedData = JSON.parse(jsonText);
+
+                        const newPattern = createPattern(
+                            `Generated ${currentGenre} Pattern`, // Name the generated pattern
+                            generatedData.kick || emptyPattern,
+                            generatedData.snare || emptyPattern,
+                            generatedData.clap || emptyPattern,
+                            generatedData.closedHat || emptyPattern,
+                            generatedData.openHat || emptyPattern,
+                            generatedData.description,
+                            generatedData.suggestedVelocity,
+                            generatedData.mainSounds
+                        );
+
+                        // Add the new pattern to the current genre's list
+                        if (!drumPatterns[currentGenre]) {
+                            drumPatterns[currentGenre] = [];
+                        }
+                        drumPatterns[currentGenre].push(newPattern);
+                        
+                        // Reload patterns for the current genre to include the new one and select it
+                        loadPatternsForGenre(currentGenre);
+                        // Find and click the newly added pattern button to select it
+                        const newPatternBtn = Array.from(patternListContainer.children).find(btn => btn.textContent === newPattern.name);
+                        if (newPatternBtn) {
+                            newPatternBtn.click();
+                        }
+
+                    } else {
+                        console.error("Gemini API response structure unexpected:", result);
+                        selectedPatternSpan.textContent = 'Failed to generate pattern. Try again!';
+                    }
+                } catch (error) {
+                    console.error("Error generating pattern:", error);
+                    selectedPatternSpan.textContent = 'Error generating pattern. Try again!';
+                } finally {
+                    loadingSpinner.classList.add('hidden'); // Hide loading spinner
+                    generatePatternBtn.disabled = false; // Re-enable buttons
+                    playStopBtn.disabled = selectedPattern === null;
+                    exportMidiBtn.disabled = selectedPattern === null;
+                }
+            };
+
+            // --- Time and Date Display Update ---
+            const updateDateTime = () => {
+                const now = new Date();
+                const optionsDate = { year: 'numeric', month: 'short', day: 'numeric' };
+                const optionsTime = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+                const dateStr = now.toLocaleDateString('en-US', optionsDate);
+                const timeStr = now.toLocaleTimeString('en-US', optionsTime);
+                datetimeDisplay.textContent = `${dateStr} ${timeStr}`;
+            };
+            setInterval(updateDateTime, 1000); // Update every second
+            updateDateTime(); // Initial call
+
+            // --- Event Listeners ---
+            playStopBtn.addEventListener('click', () => {
+                if (isPlaying) stopPlayback();
+                else startPlayback();
+            });
+            
+            // BPM Slider and Input synchronization
+            bpmSlider.addEventListener('input', (e) => {
+                const newBpm = e.target.value;
+                bpmInput.value = newBpm;
+                bpmValueSpan.textContent = newBpm;
+                Tone.Transport.bpm.value = newBpm;
+            });
+            bpmInput.addEventListener('change', (e) => {
+                let newBpm = parseInt(e.target.value);
+                if (isNaN(newBpm) || newBpm < 60) newBpm = 60;
+                if (newBpm > 200) newBpm = 200;
+                bpmSlider.value = newBpm;
+                bpmInput.value = newBpm;
+                bpmValueSpan.textContent = newBpm;
+                Tone.Transport.bpm.value = newBpm;
+            });
+
+            volumeSlider.addEventListener('input', (e) => {
+                const newVol = e.target.value;
+                volumeValueSpan.textContent = newVol;
+                Tone.Destination.volume.value = newVol;
+            });
+            genreButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    switchGenre(btn.dataset.genre);
+                    genreButtons.forEach(b => b.classList.remove('bg-red-600')); // Use red-600 for active
+                    btn.classList.add('bg-red-600'); // Use red-600 for active
+                });
+            });
+            exportMidiBtn.addEventListener('click', exportMidi);
+            generatePatternBtn.addEventListener('click', generateRandomPattern);
+
+            // --- Initial Setup ---
+            const init = () => {
+                genreButtons[0].classList.add('bg-red-600'); // Activate the first genre button (Hip Hop)
+                switchGenre('Hip Hop'); // Load Hip Hop patterns initially
+            };
+            init();
+        };
+    </script>
+</body>
+</html>
